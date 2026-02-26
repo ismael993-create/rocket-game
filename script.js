@@ -6,8 +6,11 @@ let KEY_Down = false; // ArrowDown
 let canvas, ctx;
 const backgroundimage = new Image();
 
-// high‑dpi support
+// high‑dpi & mobile scale support
 let pixelRatio = window.devicePixelRatio || 1;
+let scale = 1;                  // overall game scale (<=1 on narrow screens)
+const MOBILE_BASE_WIDTH = 800;  // width at which scale becomes 1
+
 function logicalWidth() { return canvas ? canvas.width / pixelRatio : 0; }
 function logicalHeight() { return canvas ? canvas.height / pixelRatio : 0; }
 
@@ -26,14 +29,20 @@ document.addEventListener("DOMContentLoaded", function () {
         canvas.style.width = window.innerWidth + 'px';
         canvas.style.height = window.innerHeight + 'px';
 
+        // update scale based on logical width (narrower => smaller)
+        scale = Math.min(1, logicalWidth() / MOBILE_BASE_WIDTH);
+
+        // adjust rocket size according to scale
+        if (roket) {
+            roket.width = BASE_ROCKET_WIDTH * scale;
+            roket.height = BASE_ROCKET_HEIGHT * scale;
+            // keep rocket on screen after resize
+            roket.y = Math.max(0, Math.min(roket.y, logicalHeight() - roket.height));
+        }
+
         // scale drawing operations so they match CSS pixels
         if (ctx) {
             ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-        }
-
-        // keep rocket on screen after resize
-        if (roket) {
-            roket.y = Math.max(0, Math.min(roket.y, canvas.height/ratio - roket.height));
         }
     }
     window.addEventListener("resize", resizeCanvas);
@@ -45,11 +54,15 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
+// base dimensions used for scaling
+const BASE_ROCKET_WIDTH = 200;
+const BASE_ROCKET_HEIGHT = 90;
+
 let roket = {
     x: 50,
     y: 0, // will be initialized when canvas size is known
-    width: 200,
-    height: 90,
+    width: BASE_ROCKET_WIDTH,
+    height: BASE_ROCKET_HEIGHT,
     src: "./img/rocket.png",
     image: null
 };
@@ -326,11 +339,14 @@ window.addEventListener('keyup', (e) => {
 });
 
 function createufos(params) {
+    // size UFO according to current scale
+    const U_WIDTH = 100 * scale;
+    const U_HEIGHT = 40 * scale;
     let ufo = {
      // x will be set to the right edge after width is known
-     y: Math.random() * (logicalHeight() - 60) + 20,
-     width: 100,
-     height: 40,
+     y: Math.random() * (logicalHeight() - U_HEIGHT - 20) + 20,
+     width: U_WIDTH,
+     height: U_HEIGHT,
      src: "./img/ufo.png",
      image: new Image()
 
@@ -349,8 +365,8 @@ function spawnBullet() {
     // Bullet originates from the front of the rocket
     const bx = roket.x + roket.width;
     const by = roket.y + roket.height / 2;
-    // vx now in pixels per second
-    bullets.push({ x: bx, y: by, vx: 800, length: LASER_LENGTH, height: LASER_HEIGHT });
+    // adjust bullet speed/size with scale (slower and shorter on mobile)
+    bullets.push({ x: bx, y: by, vx: 800 * scale, length: LASER_LENGTH * scale, height: LASER_HEIGHT * scale });
     // play a short laser sound
     playLaserSound();
 }
@@ -412,6 +428,8 @@ async function startGame() {
     ctx = canvas.getContext('2d');
 
     // center rocket vertically according to current canvas size
+    roket.width = BASE_ROCKET_WIDTH * scale;
+    roket.height = BASE_ROCKET_HEIGHT * scale;
     roket.y = (logicalHeight() - roket.height) / 2;
 
     // Load initial images (background + rocket), then start the render loop
@@ -526,8 +544,9 @@ function draw() {
 
     // simple controls for rocket (disabled when destroyed)
     if (!roket.isDestroyed) {
-        if (KEY_Up) roket.y -= 9;
-        if (KEY_Down) roket.y += 9;
+        const step = 9 * scale; // slower on small screens
+        if (KEY_Up) roket.y -= step;
+        if (KEY_Down) roket.y += step;
         // clamp rocket to canvas
         if (roket.y < 0) roket.y = 0;
         if (roket.y + roket.height > h) roket.y = h - roket.height;
@@ -543,7 +562,9 @@ function draw() {
 
     // determine ufo speed in px/s. We'll ramp from base to max linearly over SPEED_RAMP_DURATION after SPEED_INCREASE_START.
     // Calculate max speed so that an ufo spawned at right edge reaches rocket.x in ~1s: maxSpeed = (logicalWidth() - roket.x) / 1s
-    const maxSpeedPPS = Math.max(200, (logicalWidth() - roket.x) / 1.0);
+    let maxSpeedPPS = Math.max(200, (logicalWidth() - roket.x) / 1.0);
+    // slow UFOs when scale <1
+    maxSpeedPPS *= scale;
     const elapsed = now - startTime;
     if (elapsed <= SPEED_INCREASE_START) {
         ufoSpeedPPS = UFO_BASE_SPEED_PPS;
@@ -743,7 +764,10 @@ function softRestart() {
     roket.image = roket.origImage || roket.image;
     roket.isDestroyed = false;
     roket.x = 50;
-    roket.y = 350;
+    // reapply scaled dimensions and center vertically
+    roket.width = BASE_ROCKET_WIDTH * scale;
+    roket.height = BASE_ROCKET_HEIGHT * scale;
+    roket.y = (logicalHeight() - roket.height) / 2;
 
     // reset timers
     startTime = performance.now();
