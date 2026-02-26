@@ -25,6 +25,8 @@ const BULLET_SPEED_BOOST = 2;        // double bullet speed
 // additional orientation-specific reductions
 const PORTRAIT_TOUCH_FACTOR = 0.5;     // further slow touch movement in portrait
 const PORTRAIT_UFO_SPEED_FACTOR = 0.5; // further slow UFOs in portrait
+// overall extra reduction when running on mobile screens
+const MOBILE_UFO_EXTRA_SLOW = 0.3;    // multiply speed by this on any small display
 
 function logicalWidth() { return canvas ? canvas.width / pixelRatio : 0; }
 function logicalHeight() { return canvas ? canvas.height / pixelRatio : 0; }
@@ -603,6 +605,10 @@ function draw() {
     // slow UFOs based on scale, mobile speed reduction, additional halving
     let speedFactor = scale < 1 ? MOBILE_SPEED_FACTOR * MOBILE_SPEED_REDUCTION : 1;
     maxSpeedPPS *= scale * speedFactor * UFO_SPEED_REDUCTION_FACTOR;
+    // global mobile slowdown
+    if (scale < 1) {
+        maxSpeedPPS *= MOBILE_UFO_EXTRA_SLOW;
+    }
     // further reduce in portrait orientation
     if (logicalHeight() > logicalWidth()) {
         maxSpeedPPS *= PORTRAIT_UFO_SPEED_FACTOR;
