@@ -2,14 +2,18 @@ let KEY_Space = false; // Space
 let KEY_Up = false; // ArrowUp
 let KEY_Down = false; // ArrowDown
 
+document.addEventListener("DOMContentLoaded", function () {
+
+const canvas = document.getElementById("canvas");
+let ctx = canvas.getContext("2d");
+
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 }
 
 window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
-
+resizeCanvas();});
 
 const canvas = document.getElementById("canvas");
 let ctx;
