@@ -120,7 +120,7 @@ function startBgMusic() {
         const baseNote = pattern[arpIndex % pattern.length];
     const osc = audioCtx.createOscillator();
     // prefer softer waves for a muffled sound
-    osc.type = Math.random() > 0.8 ? 'sawtooth' : (Math.random() > 0.5 ? 'triangle' : 'sine');
+    osc.type = Math.random() > 0.95 ? 'sawtooth' : (Math.random() > 0.5 ? 'triangle' : 'sine');
     const freq = baseNote * (Math.random() > 0.9 ? 2 : 1);
         osc.frequency.value = freq;
         const g = audioCtx.createGain();
