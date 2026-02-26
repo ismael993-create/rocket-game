@@ -12,6 +12,10 @@ let scale = 1;                  // overall game scale (<=1 on narrow screens)
 const MOBILE_BASE_WIDTH = 800;  // width at which scale becomes 1
 const MOBILE_SCALE_FACTOR = 0.5; // additionally shrink on phones
 const MOBILE_SPEED_FACTOR = 0.4; // slow movement/ufos further on small screens
+// user-requested extra halving on phones
+const MOBILE_SIZE_REDUCTION = 0.5;   // additional multiplicative reduction for UFOs
+const MOBILE_SPEED_REDUCTION = 0.5;  // additional speed reduction for UFOs
+const MOBILE_TOUCH_REDUCTION = 0.5;  // additional reduction for rocket touch movement
 
 function logicalWidth() { return canvas ? canvas.width / pixelRatio : 0; }
 function logicalHeight() { return canvas ? canvas.height / pixelRatio : 0; }
@@ -347,9 +351,13 @@ window.addEventListener('keyup', (e) => {
 });
 
 function createufos(params) {
-    // size UFO according to current scale
-    const U_WIDTH = 100 * scale;
-    const U_HEIGHT = 40 * scale;
+    // size UFO according to current scale, then apply extra halving for mobile
+    let U_WIDTH = 100 * scale;
+    let U_HEIGHT = 40 * scale;
+    if (scale < 1) {
+        U_WIDTH *= MOBILE_SIZE_REDUCTION;
+        U_HEIGHT *= MOBILE_SIZE_REDUCTION;
+    }
     let ufo = {
      // x will be set to the right edge after width is known
      y: Math.random() * (logicalHeight() - U_HEIGHT - 20) + 20,
@@ -554,8 +562,8 @@ function draw() {
 
     // simple controls for rocket (disabled when destroyed)
     if (!roket.isDestroyed) {
-        // apply extra slow factor on mobile
-        const speedFactor = scale < 1 ? MOBILE_SPEED_FACTOR : 1;
+        // apply extra slow factor on mobile including user halving
+        let speedFactor = scale < 1 ? MOBILE_SPEED_FACTOR * MOBILE_TOUCH_REDUCTION : 1;
         const step = 9 * scale * speedFactor;
         if (KEY_Up) roket.y -= step;
         if (KEY_Down) roket.y += step;
@@ -575,8 +583,8 @@ function draw() {
     // determine ufo speed in px/s. We'll ramp from base to max linearly over SPEED_RAMP_DURATION after SPEED_INCREASE_START.
     // Calculate max speed so that an ufo spawned at right edge reaches rocket.x in ~1s: maxSpeed = (logicalWidth() - roket.x) / 1s
     let maxSpeedPPS = Math.max(200, (logicalWidth() - roket.x) / 1.0);
-    // slow UFOs based on scale and additional mobile speed reduction
-    let speedFactor = scale < 1 ? MOBILE_SPEED_FACTOR : 1;
+    // slow UFOs based on scale, mobile speed reduction, and user halving request
+    let speedFactor = scale < 1 ? MOBILE_SPEED_FACTOR * MOBILE_SPEED_REDUCTION : 1;
     maxSpeedPPS *= scale * speedFactor;
     const elapsed = now - startTime;
     if (elapsed <= SPEED_INCREASE_START) {
