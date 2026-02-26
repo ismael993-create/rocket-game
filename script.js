@@ -10,6 +10,8 @@ const backgroundimage = new Image();
 let pixelRatio = window.devicePixelRatio || 1;
 let scale = 1;                  // overall game scale (<=1 on narrow screens)
 const MOBILE_BASE_WIDTH = 800;  // width at which scale becomes 1
+const MOBILE_SCALE_FACTOR = 0.5; // additionally shrink on phones
+const MOBILE_SPEED_FACTOR = 0.4; // slow movement/ufos further on small screens
 
 function logicalWidth() { return canvas ? canvas.width / pixelRatio : 0; }
 function logicalHeight() { return canvas ? canvas.height / pixelRatio : 0; }
@@ -30,7 +32,13 @@ document.addEventListener("DOMContentLoaded", function () {
         canvas.style.height = window.innerHeight + 'px';
 
         // update scale based on logical width (narrower => smaller)
-        scale = Math.min(1, logicalWidth() / MOBILE_BASE_WIDTH);
+        if (logicalWidth() < MOBILE_BASE_WIDTH) {
+            scale = (logicalWidth() / MOBILE_BASE_WIDTH) * MOBILE_SCALE_FACTOR;
+            // enforce a minimum so things don't vanish completely
+            scale = Math.max(scale, 0.2);
+        } else {
+            scale = 1;
+        }
 
         // adjust rocket size according to scale
         if (roket) {
@@ -366,7 +374,9 @@ function spawnBullet() {
     const bx = roket.x + roket.width;
     const by = roket.y + roket.height / 2;
     // adjust bullet speed/size with scale (slower and shorter on mobile)
-    bullets.push({ x: bx, y: by, vx: 800 * scale, length: LASER_LENGTH * scale, height: LASER_HEIGHT * scale });
+    // reduce bullet speed on mobile as well
+    const bulletSpeedFactor = scale < 1 ? MOBILE_SPEED_FACTOR : 1;
+    bullets.push({ x: bx, y: by, vx: 800 * scale * bulletSpeedFactor, length: LASER_LENGTH * scale, height: LASER_HEIGHT * scale });
     // play a short laser sound
     playLaserSound();
 }
@@ -544,7 +554,9 @@ function draw() {
 
     // simple controls for rocket (disabled when destroyed)
     if (!roket.isDestroyed) {
-        const step = 9 * scale; // slower on small screens
+        // apply extra slow factor on mobile
+        const speedFactor = scale < 1 ? MOBILE_SPEED_FACTOR : 1;
+        const step = 9 * scale * speedFactor;
         if (KEY_Up) roket.y -= step;
         if (KEY_Down) roket.y += step;
         // clamp rocket to canvas
@@ -563,8 +575,9 @@ function draw() {
     // determine ufo speed in px/s. We'll ramp from base to max linearly over SPEED_RAMP_DURATION after SPEED_INCREASE_START.
     // Calculate max speed so that an ufo spawned at right edge reaches rocket.x in ~1s: maxSpeed = (logicalWidth() - roket.x) / 1s
     let maxSpeedPPS = Math.max(200, (logicalWidth() - roket.x) / 1.0);
-    // slow UFOs when scale <1
-    maxSpeedPPS *= scale;
+    // slow UFOs based on scale and additional mobile speed reduction
+    let speedFactor = scale < 1 ? MOBILE_SPEED_FACTOR : 1;
+    maxSpeedPPS *= scale * speedFactor;
     const elapsed = now - startTime;
     if (elapsed <= SPEED_INCREASE_START) {
         ufoSpeedPPS = UFO_BASE_SPEED_PPS;
