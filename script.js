@@ -17,6 +17,11 @@ const MOBILE_SIZE_REDUCTION = 0.5;   // additional multiplicative reduction for 
 const MOBILE_SPEED_REDUCTION = 0.5;  // additional speed reduction for UFOs
 const MOBILE_TOUCH_REDUCTION = 0.5;  // additional reduction for rocket touch movement
 
+// new user-requested adjustments
+const ROCKET_EXTRA_SCALE = 2;        // double rocket size on mobile
+const UFO_SPEED_REDUCTION_FACTOR = 2/3; // reduce UFO speed by one third more
+const BULLET_SPEED_BOOST = 2;        // double bullet speed
+
 function logicalWidth() { return canvas ? canvas.width / pixelRatio : 0; }
 function logicalHeight() { return canvas ? canvas.height / pixelRatio : 0; }
 
@@ -46,8 +51,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // adjust rocket size according to scale
         if (roket) {
-            roket.width = BASE_ROCKET_WIDTH * scale;
-            roket.height = BASE_ROCKET_HEIGHT * scale;
+            let rocketScale = scale;
+            if (scale < 1) rocketScale *= ROCKET_EXTRA_SCALE;
+            roket.width = BASE_ROCKET_WIDTH * rocketScale;
+            roket.height = BASE_ROCKET_HEIGHT * rocketScale;
             // keep rocket on screen after resize
             roket.y = Math.max(0, Math.min(roket.y, logicalHeight() - roket.height));
         }
@@ -384,7 +391,7 @@ function spawnBullet() {
     // adjust bullet speed/size with scale (slower and shorter on mobile)
     // reduce bullet speed on mobile as well
     const bulletSpeedFactor = scale < 1 ? MOBILE_SPEED_FACTOR : 1;
-    bullets.push({ x: bx, y: by, vx: 800 * scale * bulletSpeedFactor, length: LASER_LENGTH * scale, height: LASER_HEIGHT * scale });
+    bullets.push({ x: bx, y: by, vx: 800 * scale * bulletSpeedFactor * BULLET_SPEED_BOOST, length: LASER_LENGTH * scale, height: LASER_HEIGHT * scale });
     // play a short laser sound
     playLaserSound();
 }
@@ -446,8 +453,10 @@ async function startGame() {
     ctx = canvas.getContext('2d');
 
     // center rocket vertically according to current canvas size
-    roket.width = BASE_ROCKET_WIDTH * scale;
-    roket.height = BASE_ROCKET_HEIGHT * scale;
+    let rocketScale = scale;
+    if (scale < 1) rocketScale *= ROCKET_EXTRA_SCALE;
+    roket.width = BASE_ROCKET_WIDTH * rocketScale;
+    roket.height = BASE_ROCKET_HEIGHT * rocketScale;
     roket.y = (logicalHeight() - roket.height) / 2;
 
     // Load initial images (background + rocket), then start the render loop
@@ -583,9 +592,9 @@ function draw() {
     // determine ufo speed in px/s. We'll ramp from base to max linearly over SPEED_RAMP_DURATION after SPEED_INCREASE_START.
     // Calculate max speed so that an ufo spawned at right edge reaches rocket.x in ~1s: maxSpeed = (logicalWidth() - roket.x) / 1s
     let maxSpeedPPS = Math.max(200, (logicalWidth() - roket.x) / 1.0);
-    // slow UFOs based on scale, mobile speed reduction, and user halving request
+    // slow UFOs based on scale, mobile speed reduction, additional halving
     let speedFactor = scale < 1 ? MOBILE_SPEED_FACTOR * MOBILE_SPEED_REDUCTION : 1;
-    maxSpeedPPS *= scale * speedFactor;
+    maxSpeedPPS *= scale * speedFactor * UFO_SPEED_REDUCTION_FACTOR;
     const elapsed = now - startTime;
     if (elapsed <= SPEED_INCREASE_START) {
         ufoSpeedPPS = UFO_BASE_SPEED_PPS;
@@ -786,8 +795,10 @@ function softRestart() {
     roket.isDestroyed = false;
     roket.x = 50;
     // reapply scaled dimensions and center vertically
-    roket.width = BASE_ROCKET_WIDTH * scale;
-    roket.height = BASE_ROCKET_HEIGHT * scale;
+    let rocketScale = scale;
+    if (scale < 1) rocketScale *= ROCKET_EXTRA_SCALE;
+    roket.width = BASE_ROCKET_WIDTH * rocketScale;
+    roket.height = BASE_ROCKET_HEIGHT * rocketScale;
     roket.y = (logicalHeight() - roket.height) / 2;
 
     // reset timers
