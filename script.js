@@ -374,6 +374,9 @@ function createufos(params) {
         // enlarge slightly after reduction
         U_WIDTH *= MOBILE_UFO_SIZE_BOOST;
         U_HEIGHT *= MOBILE_UFO_SIZE_BOOST;
+        // as requested, double size on mobiles
+        U_WIDTH *= 2;
+        U_HEIGHT *= 2;
     }
     let ufo = {
      // x will be set to the right edge after width is known
@@ -590,7 +593,8 @@ function draw() {
         if (logicalHeight() > logicalWidth()) {
             speedFactor *= PORTRAIT_TOUCH_FACTOR;
         }
-        const step = 9 * speedFactor;
+        let step = 9 * speedFactor;
+        if (scale < 1) step *= 2; // double speed on mobile screens
         if (KEY_Up) roket.y -= step;
         if (KEY_Down) roket.y += step;
         // clamp rocket to canvas
@@ -615,6 +619,8 @@ function draw() {
     // global mobile slowdown
     if (scale < 1) {
         maxSpeedPPS *= MOBILE_UFO_EXTRA_SLOW;
+        // also cut UFO speed by additional half per request
+        maxSpeedPPS *= 0.5;
     }
     // further reduce in portrait orientation
     if (logicalHeight() > logicalWidth()) {
