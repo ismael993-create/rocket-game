@@ -26,7 +26,8 @@ const BULLET_SPEED_BOOST = 2;        // double bullet speed
 const PORTRAIT_TOUCH_FACTOR = 0.5;     // further slow touch movement in portrait
 const PORTRAIT_UFO_SPEED_FACTOR = 0.5; // further slow UFOs in portrait
 // overall extra reduction when running on mobile screens
-const MOBILE_UFO_EXTRA_SLOW = 0.3;    // multiply speed by this on any small display
+const MOBILE_UFO_EXTRA_SLOW = 0.15;    // multiply speed by this on any small display (smaller = slower)
+const MOBILE_UFO_SIZE_BOOST = 1.3;     // enlarge UFOs on mobile
 
 function logicalWidth() { return canvas ? canvas.width / pixelRatio : 0; }
 function logicalHeight() { return canvas ? canvas.height / pixelRatio : 0; }
@@ -370,6 +371,9 @@ function createufos(params) {
     if (scale < 1) {
         U_WIDTH *= MOBILE_SIZE_REDUCTION;
         U_HEIGHT *= MOBILE_SIZE_REDUCTION;
+        // enlarge slightly after reduction
+        U_WIDTH *= MOBILE_UFO_SIZE_BOOST;
+        U_HEIGHT *= MOBILE_UFO_SIZE_BOOST;
     }
     let ufo = {
      // x will be set to the right edge after width is known
@@ -577,13 +581,16 @@ function draw() {
 
     // simple controls for rocket (disabled when destroyed)
     if (!roket.isDestroyed) {
-        // apply extra slow factor on mobile including user halving
-        let speedFactor = scale < 1 ? MOBILE_SPEED_FACTOR * MOBILE_TOUCH_REDUCTION : 1;
-        // if in portrait orientation, slow even more
+        // rocket speed always constant (9) but may have orientation-based slow factor
+        let speedFactor = 1;
+        if (scale < 1) {
+            // keep previous portrait slow, but do not apply scale reduction
+            speedFactor = MOBILE_SPEED_FACTOR * MOBILE_TOUCH_REDUCTION;
+        }
         if (logicalHeight() > logicalWidth()) {
             speedFactor *= PORTRAIT_TOUCH_FACTOR;
         }
-        const step = 9 * scale * speedFactor;
+        const step = 9 * speedFactor;
         if (KEY_Up) roket.y -= step;
         if (KEY_Down) roket.y += step;
         // clamp rocket to canvas
