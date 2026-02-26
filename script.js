@@ -2,26 +2,52 @@ let KEY_Space = false; // Space
 let KEY_Up = false; // ArrowUp
 let KEY_Down = false; // ArrowDown
 
-document.addEventListener("DOMContentLoaded", function () {
-
-const canvas = document.getElementById("canvas");
-let ctx = canvas.getContext("2d");
-
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();});
-
-const canvas = document.getElementById("canvas");
-let ctx;
+// global vars used by many functions
+let canvas, ctx;
 const backgroundimage = new Image();
+
+// high‑dpi support
+let pixelRatio = window.devicePixelRatio || 1;
+function logicalWidth() { return canvas ? canvas.width / pixelRatio : 0; }
+function logicalHeight() { return canvas ? canvas.height / pixelRatio : 0; }
+
+// wait for DOM so we can query the canvas element and set up resizing
+document.addEventListener("DOMContentLoaded", function () {
+    canvas = document.getElementById("canvas");
+    ctx = canvas.getContext("2d");
+
+    function resizeCanvas() {
+        const ratio = window.devicePixelRatio || 1;
+        pixelRatio = ratio;
+        // set actual pixel dimensions for high‑DPI displays
+        canvas.width = window.innerWidth * ratio;
+        canvas.height = window.innerHeight * ratio;
+        // keep the CSS size at full viewport so page layout stays the same
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+
+        // scale drawing operations so they match CSS pixels
+        if (ctx) {
+            ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        }
+
+        // keep rocket on screen after resize
+        if (roket) {
+            roket.y = Math.max(0, Math.min(roket.y, canvas.height/ratio - roket.height));
+        }
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    // touch controls require a valid canvas element
+    if (typeof initTouchControls === 'function') {
+        initTouchControls();
+    }
+});
 
 let roket = {
     x: 50,
-    y: 350,
+    y: 0, // will be initialized when canvas size is known
     width: 200,
     height: 90,
     src: "./img/rocket.png",
@@ -302,7 +328,7 @@ window.addEventListener('keyup', (e) => {
 function createufos(params) {
     let ufo = {
      // x will be set to the right edge after width is known
-     y: Math.random() * (canvas.height - 60) + 20,
+     y: Math.random() * (logicalHeight() - 60) + 20,
      width: 100,
      height: 40,
      src: "./img/ufo.png",
@@ -310,7 +336,7 @@ function createufos(params) {
 
 };
     // place ufo exactly at the right edge so it's fully visible
-    ufo.x = canvas.width - ufo.width;
+    ufo.x = logicalWidth() - ufo.width;
     console.log('createufos: created ufo at x=' + ufo.x + ' y=' + ufo.y + ' (ufos before push=' + ufos.length + ')');
     ufo.image.onload = () => console.log('ufo loaded at y=' + ufo.y);
     ufo.image.onerror = () => console.error('Failed to load ufo (src=' + ufo.src + ')');
@@ -384,6 +410,9 @@ async function startGame() {
         return;
     }
     ctx = canvas.getContext('2d');
+
+    // center rocket vertically according to current canvas size
+    roket.y = (logicalHeight() - roket.height) / 2;
 
     // Load initial images (background + rocket), then start the render loop
     await loadImages();
@@ -480,13 +509,16 @@ function waitForImage(img, name) {
 
 function draw() {
     if (!ctx) return;
-    // clear
+    // clear (physical pixels – unaffected by transform)
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // draw background stretched to canvas
+    const w = logicalWidth();
+    const h = logicalHeight();
+
+    // draw background stretched to logical size
     if (backgroundimage && backgroundimage.complete) {
         try {
-            ctx.drawImage(backgroundimage, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(backgroundimage, 0, 0, w, h);
         } catch (e) {
             console.warn('Could not draw background:', e);
         }
@@ -498,7 +530,7 @@ function draw() {
         if (KEY_Down) roket.y += 9;
         // clamp rocket to canvas
         if (roket.y < 0) roket.y = 0;
-        if (roket.y + roket.height > canvas.height) roket.y = canvas.height - roket.height;
+        if (roket.y + roket.height > h) roket.y = h - roket.height;
     }
     if (roket.image && roket.image.complete) {
         ctx.drawImage(roket.image, roket.x, roket.y, roket.width, roket.height);
@@ -510,8 +542,8 @@ function draw() {
     lastFrameTime = now;
 
     // determine ufo speed in px/s. We'll ramp from base to max linearly over SPEED_RAMP_DURATION after SPEED_INCREASE_START.
-    // Calculate max speed so that an ufo spawned at right edge reaches rocket.x in ~1s: maxSpeed = (canvas.width - roket.x) / 1s
-    const maxSpeedPPS = Math.max(200, (canvas.width - roket.x) / 1.0);
+    // Calculate max speed so that an ufo spawned at right edge reaches rocket.x in ~1s: maxSpeed = (logicalWidth() - roket.x) / 1s
+    const maxSpeedPPS = Math.max(200, (logicalWidth() - roket.x) / 1.0);
     const elapsed = now - startTime;
     if (elapsed <= SPEED_INCREASE_START) {
         ufoSpeedPPS = UFO_BASE_SPEED_PPS;
@@ -535,7 +567,7 @@ function draw() {
 
     // Remove bullets off-screen
     bullets = bullets.filter(function(b){
-        return b.x - b.length < canvas.width;
+        return b.x - b.length < logicalWidth();
     });
 
     // Bullet <-> Ufo collision: check and apply score (rectangular laser collision)
@@ -556,7 +588,7 @@ function draw() {
                     // play explosion sound
                     playExplosionSound();
                     // mark bullet for removal by moving it off-screen
-                    b.x = canvas.width + 1000;
+                    b.x = logicalWidth() + 1000;
                     score += 10;
                     if (score > bestScore) { bestScore = score; localStorage.setItem('bestScore', bestScore); }
                 }
@@ -645,7 +677,7 @@ function draw() {
         ctx.font = '140px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(remaining.toString(), canvas.width / 2, canvas.height / 2);
+        ctx.fillText(remaining.toString(), logicalWidth() / 2, logicalHeight() / 2);
         ctx.restore();
 
         // GAME OVER text (white)
@@ -654,7 +686,7 @@ function draw() {
         ctx.font = '72px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 10);
+        ctx.fillText('GAME OVER', logicalWidth() / 2, logicalHeight() / 2 - 10);
         ctx.restore();
     }
 
@@ -663,7 +695,7 @@ function draw() {
     ctx.fillStyle = 'lightgray';
     ctx.font = '16px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText('UFO speed: ' + Math.round(ufoSpeedPPS) + ' px/s', canvas.width - 10, canvas.height - 10);
+    ctx.fillText('UFO speed: ' + Math.round(ufoSpeedPPS) + ' px/s', logicalWidth() - 10, logicalHeight() - 10);
     ctx.restore();
     // optional background volume overlay
     if (showBgOverlay) {
@@ -732,42 +764,44 @@ window.startGame = startGame;
 // MOBILE TOUCH CONTROLS
 // ============================
 
-let touchStartY = null;
+function initTouchControls() {
+    let touchStartY = null;
 
-canvas.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    touchStartY = touch.clientY;
+    canvas.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        touchStartY = touch.clientY;
 
-    // rechte Bildschirmhälfte = schießen
-    if (touch.clientX > canvas.width / 2) {
-        const now = performance.now();
-        if (!roket.isDestroyed && !gameOver && (now - lastShotTime) > SHOT_COOLDOWN) {
-            spawnBullet();
-            lastShotTime = now;
+        // rechte Bildschirmhälfte = schießen
+        if (touch.clientX > logicalWidth() / 2) {
+            const now = performance.now();
+            if (!roket.isDestroyed && !gameOver && (now - lastShotTime) > SHOT_COOLDOWN) {
+                spawnBullet();
+                lastShotTime = now;
+            }
         }
-    }
-});
+    });
 
-canvas.addEventListener("touchmove", (e) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    const moveY = touch.clientY;
+    canvas.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const moveY = touch.clientY;
 
-    if (moveY < canvas.height / 2) {
-        KEY_Up = true;
-        KEY_Down = false;
-    } else {
-        KEY_Down = true;
+        if (moveY < logicalHeight() / 2) {
+            KEY_Up = true;
+            KEY_Down = false;
+        } else {
+            KEY_Down = true;
+            KEY_Up = false;
+        }
+    });
+
+    canvas.addEventListener("touchend", () => {
         KEY_Up = false;
-    }
-});
+        KEY_Down = false;
+    });
 
-canvas.addEventListener("touchend", () => {
-    KEY_Up = false;
-    KEY_Down = false;
-});
-
-document.body.addEventListener("touchmove", function(e){
-    e.preventDefault();
-}, { passive:false });
+    document.body.addEventListener("touchmove", function(e){
+        e.preventDefault();
+    }, { passive:false });
+}
