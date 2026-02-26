@@ -2,6 +2,15 @@ let KEY_Space = false; // Space
 let KEY_Up = false; // ArrowUp
 let KEY_Down = false; // ArrowDown
 
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+
 const canvas = document.getElementById("canvas");
 let ctx;
 const backgroundimage = new Image();
@@ -713,3 +722,48 @@ function softRestart() {
 }
 
 window.startGame = startGame;
+
+
+// ============================
+// MOBILE TOUCH CONTROLS
+// ============================
+
+let touchStartY = null;
+
+canvas.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchStartY = touch.clientY;
+
+    // rechte Bildschirmhälfte = schießen
+    if (touch.clientX > canvas.width / 2) {
+        const now = performance.now();
+        if (!roket.isDestroyed && !gameOver && (now - lastShotTime) > SHOT_COOLDOWN) {
+            spawnBullet();
+            lastShotTime = now;
+        }
+    }
+});
+
+canvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const moveY = touch.clientY;
+
+    if (moveY < canvas.height / 2) {
+        KEY_Up = true;
+        KEY_Down = false;
+    } else {
+        KEY_Down = true;
+        KEY_Up = false;
+    }
+});
+
+canvas.addEventListener("touchend", () => {
+    KEY_Up = false;
+    KEY_Down = false;
+});
+
+document.body.addEventListener("touchmove", function(e){
+    e.preventDefault();
+}, { passive:false });
