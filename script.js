@@ -704,7 +704,12 @@ function softRestart() {
     startTime = performance.now();
     lastFrameTime = startTime;
 
-   
+    // restart intervals
+    createUfosIntervalId = setInterval(createufos, 3000);
+    collisionIntervalId = setInterval(checkforcollisions, 100 / 25);
+
+    // resume the draw loop (it's already running via rAF, but ensure state is fresh)
+    requestAnimationFrame(draw);
 }
 
 window.startGame = startGame;
