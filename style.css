@@ -1,17 +1,3 @@
-/* Querformat auf Mobilgeräten per CSS erzwingen (Safari-Fallback) */
-@media screen and (orientation: portrait) and (max-width: 900px) {
-    body {
-        transform: rotate(90deg);
-        transform-origin: left top;
-        width: 100vh;
-        height: 100vw;
-        overflow: hidden;
-        position: absolute;
-        top: 100%;
-        left: 0;
-    }
-}
-
 canvas {
     background-color: rgba(0, 0, 0, 0.8);
     display: block;
@@ -19,7 +5,7 @@ canvas {
     touch-action: none;
 }
 
-/* ── Querformat-Overlay ─────────────────────────────────────── */
+/* ── Querformat-Overlay (Safari-Fallback) ───────────────────── */
 #orientationOverlay {
     display: none;
     position: fixed;
@@ -46,9 +32,9 @@ canvas {
     50%       { transform: rotate(90deg); }
 }
 
-/* ── Touch-Steuerungsleiste ─────────────────────────────────── */
+/* ── Touch-Buttons ──────────────────────────────────────────── */
 #touchControls {
-    display: none; /* per JS eingeblendet auf Mobilgeräten */
+    display: none;
     position: fixed;
     bottom: 12px;
     left: 12px;
@@ -79,9 +65,9 @@ canvas {
     color: #fff;
 }
 
-/* 🔵 Schießen-Button rechts unten */
+/* 🔵 Schießen-Button */
 #touchShoot {
-    display: none; /* per JS eingeblendet */
+    display: none;
     position: fixed;
     right: 20px;
     bottom: 20px;
