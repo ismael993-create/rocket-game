@@ -1,14 +1,32 @@
+
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Space Schlacht</title>
     <link rel="icon" href="./img/icon.png" type="image/png" />
     <link rel="stylesheet" href="style.css" />
     <script src="script.js" defer></script>
   </head>
   <body onload="startGame()">
-    <canvas id="canvas" width="1900" height="900"> </canvas>
+
+    <!-- Querformat-Hinweis (nur auf Mobilgeräten sichtbar) -->
+    <div id="orientationOverlay">
+      <div class="rotate-icon">📱</div>
+      <div>Bitte Querformat verwenden</div>
+      <div style="font-size:0.85rem;opacity:0.6;margin-top:0.3rem">Drehe dein Gerät ↻</div>
+    </div>
+
+    <canvas id="canvas" width="1900" height="900"></canvas>
+
+    <!-- Touch-Buttons (nur auf Mobilgeräten sichtbar) -->
+    <div id="touchControls">
+      <div class="touch-btn" id="touchUp">▲</div>
+      <div class="touch-btn" id="touchDown">▼</div>
+    </div>
+    <div id="touchShoot">🔵</div>
+
   </body>
 </html>

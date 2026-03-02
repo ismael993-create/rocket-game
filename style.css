@@ -1,4 +1,94 @@
 canvas {
-background-color: rgba(0,0,0,0.8);
+    background-color: rgba(0, 0, 0, 0.8);
+    display: block;
+    max-width: 100%;
+}
 
+/* ── Querformat-Overlay ─────────────────────────────────────── */
+#orientationOverlay {
+    display: none; /* wird per JS gesteuert */
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-family: sans-serif;
+    font-size: 1.3rem;
+    text-align: center;
+    gap: 0.5rem;
+}
+
+.rotate-icon {
+    font-size: 4rem;
+    animation: rotateHint 1.5s ease-in-out infinite;
+}
+
+@keyframes rotateHint {
+    0%, 100% { transform: rotate(0deg); }
+    50%       { transform: rotate(90deg); }
+}
+
+/* ── Touch-Steuerung ────────────────────────────────────────── */
+#touchControls {
+    display: none; /* wird per JS auf Mobilgeräten eingeblendet */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 130px;
+    z-index: 100;
+}
+
+.touch-btn {
+    position: absolute;
+    bottom: 10px;
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+#touchUp   { left: 20px; }
+#touchDown { left: 140px; }
+
+.touch-btn:active {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Schießen-Button (rechts) */
+#touchShoot {
+    display: none; /* wird per JS eingeblendet */
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: rgba(0, 200, 255, 0.15);
+    border: 2px solid rgba(0, 200, 255, 0.5);
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    color: rgba(0, 200, 255, 0.8);
+    z-index: 101;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+#touchShoot:active {
+    background: rgba(0, 200, 255, 0.35);
 }
