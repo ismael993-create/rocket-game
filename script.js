@@ -264,99 +264,106 @@ window.addEventListener('keyup', (e) => {
 });
 
 // ── Touch-Steuerung ───────────────────────────────────────────────────────────
+// Steuerung NUR über den Canvas (keine Buttons):
+//   obere Bildschirmhälfte gedrückt halten  → hoch
+//   untere Bildschirmhälfte gedrückt halten → runter
+//   Doppeltippen (< 300ms zwischen zwei Taps) → schießen
 function initTouchControls() {
     if (!isMobile()) return;
 
-    // UI-Elemente einblenden
-    const touchControls = document.getElementById('touchControls');
-    const touchShoot    = document.getElementById('touchShoot');
-    if (touchControls) touchControls.style.display = 'flex';
-    if (touchShoot)    touchShoot.style.display    = 'flex';
+    let lastTapTime = 0; // für Doppeltippen-Erkennung
 
-    // Hoch-Button
-    const btnUp = document.getElementById('touchUp');
-    if (btnUp) {
-        btnUp.addEventListener('touchstart', (e) => { e.preventDefault(); KEY_Up = true; },  { passive: false });
-        btnUp.addEventListener('touchend',   (e) => { e.preventDefault(); KEY_Up = false; }, { passive: false });
-        btnUp.addEventListener('touchcancel',(e) => { e.preventDefault(); KEY_Up = false; }, { passive: false });
+    // Welche Finger sind aktiv + wo
+    const activeTouches = {};
+
+    function updateDirectionFromTouches() {
+        const ids = Object.keys(activeTouches);
+        if (ids.length === 0) { KEY_Up = false; KEY_Down = false; return; }
+        // Benutze den ersten aktiven Touch für die Richtung
+        const touch = activeTouches[ids[0]];
+        const canvasRect = canvas.getBoundingClientRect();
+        const relY = touch.clientY - canvasRect.top;
+        const mid  = canvasRect.height / 2;
+        KEY_Up   = relY < mid;
+        KEY_Down = relY >= mid;
     }
-
-    // Runter-Button
-    const btnDown = document.getElementById('touchDown');
-    if (btnDown) {
-        btnDown.addEventListener('touchstart', (e) => { e.preventDefault(); KEY_Down = true; },  { passive: false });
-        btnDown.addEventListener('touchend',   (e) => { e.preventDefault(); KEY_Down = false; }, { passive: false });
-        btnDown.addEventListener('touchcancel',(e) => { e.preventDefault(); KEY_Down = false; }, { passive: false });
-    }
-
-    // Schießen-Button
-    if (touchShoot) {
-        touchShoot.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            // Audio-Kontext auf mobilen Geräten beim ersten Touch starten
-            initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const now = performance.now();
-            if (!roket.isDestroyed && !gameOver && (now - lastShotTime) > SHOT_COOLDOWN) {
-                spawnBullet(); lastShotTime = now;
-            }
-        }, { passive: false });
-    }
-
-    // Swipe auf dem Canvas: oben → KEY_Up, unten → KEY_Down, kurzer Tap → schießen
-    let touchStartY  = 0;
-    let touchStartX  = 0;
-    let touchStartMs = 0;
 
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
         initAudio();
         if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-        touchStartY  = e.touches[0].clientY;
-        touchStartX  = e.touches[0].clientX;
-        touchStartMs = performance.now();
+
+        for (const t of e.changedTouches) {
+            activeTouches[t.identifier] = { clientY: t.clientY };
+        }
+
+        // Doppeltippen-Erkennung: zwei Taps innerhalb 300ms
+        const now = performance.now();
+        if (now - lastTapTime < 300) {
+            // Doppeltippen → schießen
+            if (!roket.isDestroyed && !gameOver && (now - lastShotTime) > SHOT_COOLDOWN) {
+                spawnBullet();
+                lastShotTime = now;
+            }
+            lastTapTime = 0; // zurücksetzen damit kein Triple-Tap zählt
+        } else {
+            lastTapTime = now;
+        }
+
+        updateDirectionFromTouches();
     }, { passive: false });
 
     canvas.addEventListener('touchmove', (e) => {
         e.preventDefault();
-        const dy = e.touches[0].clientY - touchStartY;
-        // Schwellwert 10px für Richtungserkennung
-        KEY_Up   = dy < -10;
-        KEY_Down = dy >  10;
+        for (const t of e.changedTouches) {
+            if (activeTouches[t.identifier] !== undefined) {
+                activeTouches[t.identifier] = { clientY: t.clientY };
+            }
+        }
+        updateDirectionFromTouches();
     }, { passive: false });
 
     canvas.addEventListener('touchend', (e) => {
         e.preventDefault();
-        const elapsed = performance.now() - touchStartMs;
-        const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
-        const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
-        // Kurzer Tap (< 200ms, kaum Bewegung) → schießen
-        if (elapsed < 200 && dx < 15 && dy < 15) {
-            const now = performance.now();
-            if (!roket.isDestroyed && !gameOver && (now - lastShotTime) > SHOT_COOLDOWN) {
-                spawnBullet(); lastShotTime = now;
-            }
+        for (const t of e.changedTouches) {
+            delete activeTouches[t.identifier];
         }
-        KEY_Up   = false;
-        KEY_Down = false;
+        updateDirectionFromTouches();
     }, { passive: false });
 
     canvas.addEventListener('touchcancel', (e) => {
+        for (const t of e.changedTouches) {
+            delete activeTouches[t.identifier];
+        }
         KEY_Up = false; KEY_Down = false;
     }, { passive: false });
 }
 
-// ── Querformat-Erkennung ──────────────────────────────────────────────────────
+// ── Querformat erzwingen ──────────────────────────────────────────────────────
 function checkOrientation() {
+    if (!isMobile()) return;
+
+    // Methode 1: Screen Orientation API (funktioniert in den meisten Android-Browsern)
+    if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {
+            // Fallback: Overlay zeigen wenn Hochformat
+            showPortraitOverlay();
+        });
+    } else {
+        // Fallback für Safari / ältere Browser
+        showPortraitOverlay();
+    }
+}
+
+function showPortraitOverlay() {
     const overlay = document.getElementById('orientationOverlay');
     if (!overlay) return;
-    if (!isMobile()) { overlay.style.display = 'none'; return; }
     const isPortrait = window.innerHeight > window.innerWidth;
     overlay.style.display = isPortrait ? 'flex' : 'none';
 }
 
-window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 200));
-window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', () => setTimeout(showPortraitOverlay, 200));
+window.addEventListener('resize', showPortraitOverlay);
 
 // ── UFO erstellen ─────────────────────────────────────────────────────────────
 function createufos() {
