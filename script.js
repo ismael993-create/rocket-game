@@ -6,42 +6,31 @@ const canvas = document.getElementById("canvas");
 let ctx;
 const backgroundimage = new Image();
 
-// ── Responsive Canvas-Größe ───────────────────────────────────────────────────
-// Interne Spielauflösung (logische Pixel) – daran orientieren sich alle Koordinaten
-const GAME_W = 1200;
-const GAME_H = 600;
-
+// ── Canvas füllt immer das gesamte Fenster ────────────────────────────────────
 function resizeCanvas() {
-    // Canvas-Darstellungsgröße an Fenster anpassen, interne Auflösung bleibt gleich
-    const scaleX = window.innerWidth  / GAME_W;
-    const scaleY = window.innerHeight / GAME_H;
-    const scale  = Math.min(scaleX, scaleY);
-
-    canvas.width  = GAME_W;
-    canvas.height = GAME_H;
-    canvas.style.width  = Math.floor(GAME_W * scale) + 'px';
-    canvas.style.height = Math.floor(GAME_H * scale) + 'px';
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
 }
+window.addEventListener('resize', () => {
+    resizeCanvas();
+    showPortraitOverlay();
+});
 
-window.addEventListener('resize', resizeCanvas);
-
-// ── Mobile-Erkennung ─────────────────────────────────────────────────────────
+// ── Mobile-Erkennung ──────────────────────────────────────────────────────────
 function isMobile() {
-    // Nur User-Agent prüfen – kein Fensterbreiten-Check,
-    // damit Desktop-Browser nie Handy-Buttons sehen
     return /Mobi|Android|iPhone|iPad|iPod|Samsung|Mobile/i.test(navigator.userAgent);
 }
 
-// Basisgrößen (logische Pixel auf GAME_W x GAME_H)
-const ROCKET_W = 180, ROCKET_H = 80;
-const UFO_W    = 90,  UFO_H    = 36;
+// Sprite-Basisgrößen – auf Mobil etwas kleiner damit mehr Spielfeld sichtbar
+const ROCKET_W = 200, ROCKET_H = 90;
+const UFO_W    = 100, UFO_H    = 40;
 
-function spriteScale() { return isMobile() ? 0.85 : 1.0; }
-function rocketSpeed() { return isMobile() ? 3 : 6; }
+function spriteScale() { return isMobile() ? 0.7 : 1.0; }
+function rocketSpeed() { return isMobile() ? 4 : 7; }  // px pro Frame
 
 let roket = {
-    x: 40,
-    y: GAME_H / 2 - 40,
+    x: 50,
+    y: 300,
     width:  ROCKET_W,
     height: ROCKET_H,
     src:   "./img/rocket.png",
@@ -53,7 +42,7 @@ let explosions  = [];
 let score       = 0;
 let bestScore   = parseInt(localStorage.getItem('bestScore')) || 0;
 let gameOver    = null;
-let gameGeneration = 0; // erhöht bei jedem Neustart, verhindert veraltete Callbacks
+let gameGeneration = 0;
 let createUfosIntervalId = null;
 let collisionIntervalId  = null;
 let bullets      = [];
@@ -87,23 +76,19 @@ function startBgMusic() {
     if (audioMuted) return;
     initAudio();
     if (bgNodes) return;
-
     const osc1 = audioCtx.createOscillator();
     const osc2 = audioCtx.createOscillator();
     osc1.type = 'triangle'; osc2.type = 'sine';
     osc1.frequency.value = 55; osc2.frequency.value = 82.41; osc2.detune.value = 12;
-
     const mix = audioCtx.createGain(); mix.gain.value = 0.12;
     const filter = audioCtx.createBiquadFilter();
     filter.type = 'lowpass'; filter.frequency.value = 420;
     osc1.connect(mix); osc2.connect(mix); mix.connect(filter); filter.connect(bgGain);
-
     const lfo = audioCtx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.03;
     const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 100;
     lfo.connect(lfoGain); lfoGain.connect(filter.frequency);
     osc1.start(); osc2.start(); lfo.start();
     bgNodes = { osc1, osc2, mix, filter, lfo, lfoGain };
-
     const arpGain = audioCtx.createGain(); arpGain.gain.value = 0.5; arpGain.connect(filter);
     const arpPatterns = [
         [261.63, 329.63, 392.00, 523.25],
@@ -164,7 +149,6 @@ function playExplosionSound() {
     thumpG.gain.linearRampToValueAtTime(1.0, now + 0.01);
     thumpG.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
     thump.start(now); thump.stop(now + 0.52);
-
     const bufferSize = Math.floor(audioCtx.sampleRate * 0.12);
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data   = buffer.getChannelData(0);
@@ -306,30 +290,26 @@ function initTouchControls() {
     canvas.addEventListener('touchcancel', () => { KEY_Up = false; KEY_Down = false; }, { passive: false });
 }
 
-// ── Querformat-Hinweis (nur Overlay, kein CSS-Rotate) ────────────────────────
+// ── Querformat-Hinweis ────────────────────────────────────────────────────────
 function checkOrientation() {
     if (!isMobile()) return;
-    // Versuche API-Lock (funktioniert auf Android Chrome/Firefox/Samsung Internet)
     if (screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => showPortraitOverlay());
-    } else {
-        showPortraitOverlay();
     }
-    showPortraitOverlay(); // Initial-Check immer ausführen
+    showPortraitOverlay();
 }
 
 function showPortraitOverlay() {
     const overlay = document.getElementById('orientationOverlay');
     if (!overlay) return;
-    const isPortrait = window.innerHeight > window.innerWidth;
-    overlay.style.display = isPortrait ? 'flex' : 'none';
+    overlay.style.display = (window.innerHeight > window.innerWidth) ? 'flex' : 'none';
 }
 
-window.addEventListener('orientationchange', () => setTimeout(showPortraitOverlay, 200));
-window.addEventListener('resize', () => { resizeCanvas(); showPortraitOverlay(); });
+window.addEventListener('orientationchange', () => setTimeout(() => { resizeCanvas(); showPortraitOverlay(); }, 200));
 
 // ── UFO erstellen ─────────────────────────────────────────────────────────────
 function createufos() {
+    if (gameOver || roket.isDestroyed) return; // keine neuen UFOs wenn Game Over
     const s    = spriteScale();
     const ufoW = Math.round(UFO_W * s);
     const ufoH = Math.round(UFO_H * s);
@@ -338,7 +318,8 @@ function createufos() {
         width:  ufoW,
         height: ufoH,
         src:    "./img/ufo.png",
-        image:  new Image()
+        image:  new Image(),
+        gen:    gameGeneration  // merkt sich zu welchem Spiel dieses UFO gehört
     };
     ufo.x = canvas.width - ufoW;
     ufo.image.onerror = () => console.error('Failed to load ufo');
@@ -373,50 +354,9 @@ function createExplosion(cx, cy, opts) {
     explosions.push({ x: cx, y: cy, start: performance.now(), duration, particles });
 }
 
-// ── Spielstart ────────────────────────────────────────────────────────────────
-async function startGame() {
-    if (!canvas) { console.error('Canvas not found'); return; }
-    ctx = canvas.getContext('2d');
-
-    // Canvas-Größe setzen BEVOR Bilder geladen werden
-    resizeCanvas();
-
-    const s = spriteScale();
-    roket.width  = Math.round(ROCKET_W * s);
-    roket.height = Math.round(ROCKET_H * s);
-    roket.y = canvas.height / 2 - roket.height / 2;
-
-    await loadImages();
-    startBgMusic();
-    initTouchControls();
-    checkOrientation();
-
-    createUfosIntervalId = setInterval(createufos, 3000);
-    collisionIntervalId  = setInterval(checkforcollisions, 100 / 25);
-
-    gameGeneration++;
-    startTime     = performance.now();
-    lastFrameTime = startTime;
-    requestAnimationFrame(draw);
-}
-
-// ── Kollisionsprüfung ─────────────────────────────────────────────────────────
-function checkforcollisions() {
-    if (roket.isDestroyed || gameOver) return;
-    if (ufos.length === 0) return; // keine UFOs = nichts zu prüfen
-    ufos.forEach(function(ufo) {
-        if (ufo._hit) return;
-        if (roket.x < ufo.x + ufo.width  &&
-            roket.x + roket.width  > ufo.x &&
-            roket.y < ufo.y + ufo.height &&
-            roket.y + roket.height > ufo.y) {
-            ufo._hit = true;
-            triggerGameOver();
-        }
-    });
-}
-
+// ── Game Over auslösen ────────────────────────────────────────────────────────
 function triggerGameOver() {
+    // Guard: nur einmal pro Spiel auslösen
     if (roket.isDestroyed || gameOver) return;
     roket.image = roket.boomImage || roket.image;
     roket.isDestroyed = true;
@@ -424,7 +364,28 @@ function triggerGameOver() {
     if (collisionIntervalId)  { clearInterval(collisionIntervalId);  collisionIntervalId  = null; }
     gameOver = { endTime: performance.now() + 5000 };
     playSadSound();
-    setTimeout(softRestart, 5000);
+    const myGen = gameGeneration;
+    setTimeout(() => {
+        if (gameGeneration === myGen) softRestart(); // nur wenn kein neueres Spiel läuft
+    }, 5000);
+}
+
+// ── Kollisionsprüfung (läuft im Interval) ────────────────────────────────────
+function checkforcollisions() {
+    // Guard: nicht prüfen wenn bereits Game Over oder kein aktives Spiel
+    if (roket.isDestroyed || gameOver || ufos.length === 0) return;
+    for (let i = 0; i < ufos.length; i++) {
+        const ufo = ufos[i];
+        if (ufo._hit || ufo.gen !== gameGeneration) continue; // altes UFO ignorieren
+        if (roket.x < ufo.x + ufo.width  &&
+            roket.x + roket.width  > ufo.x &&
+            roket.y < ufo.y + ufo.height &&
+            roket.y + roket.height > ufo.y) {
+            ufo._hit = true;
+            triggerGameOver();
+            return;
+        }
+    }
 }
 
 // ── Bilder laden ──────────────────────────────────────────────────────────────
@@ -446,6 +407,32 @@ function waitForImage(img, name) {
         img.onload  = () => resolve();
         img.onerror = () => { console.error('Failed to load ' + name); resolve(); };
     });
+}
+
+// ── Spielstart ────────────────────────────────────────────────────────────────
+async function startGame() {
+    if (!canvas) { console.error('Canvas not found'); return; }
+    ctx = canvas.getContext('2d');
+
+    resizeCanvas(); // Canvas auf volle Fenstergröße setzen
+
+    const s = spriteScale();
+    roket.width  = Math.round(ROCKET_W * s);
+    roket.height = Math.round(ROCKET_H * s);
+    roket.y = canvas.height / 2 - roket.height / 2;
+
+    await loadImages();
+    startBgMusic();
+    initTouchControls();
+    checkOrientation();
+
+    gameGeneration++;
+    createUfosIntervalId = setInterval(createufos, 3000);
+    collisionIntervalId  = setInterval(checkforcollisions, 40); // ~25fps
+
+    startTime     = performance.now();
+    lastFrameTime = startTime;
+    requestAnimationFrame(draw);
 }
 
 // ── Haupt-Draw-Loop ───────────────────────────────────────────────────────────
@@ -471,22 +458,23 @@ function draw() {
     }
 
     const now = performance.now();
-    const dt  = Math.min(0.1, (now - lastFrameTime) / 1000);
+    const dt  = Math.min(0.05, (now - lastFrameTime) / 1000); // max 50ms delta
     lastFrameTime = now;
 
     // UFO-Geschwindigkeit
-    const maxSpeedPPS = Math.max(200, (canvas.width - roket.x) / 1.0);
-    const elapsed     = now - startTime;
+    const elapsed = now - startTime;
     if (elapsed <= SPEED_INCREASE_START) {
         ufoSpeedPPS = UFO_BASE_SPEED_PPS;
     } else {
         const t = Math.min(1, (elapsed - SPEED_INCREASE_START) / SPEED_GROWTH_TIME_TO_MAX_MS);
+        const maxSpeedPPS = Math.max(200, (canvas.width - roket.x) / 1.0);
         ufoSpeedPPS = Math.min(UFO_MAX_SPEED_PPS, UFO_BASE_SPEED_PPS + (maxSpeedPPS - UFO_BASE_SPEED_PPS) * t);
     }
 
+    // UFOs & Bullets bewegen
     ufos.forEach(u => { u.x -= ufoSpeedPPS * dt; });
     bullets.forEach(b => { b.x += b.vx * dt; });
-    bullets = bullets.filter(b => b.x - b.length < canvas.width);
+    bullets = bullets.filter(b => b.x < canvas.width + b.length);
 
     // Treffer Kugel ↔ UFO
     bullets.forEach(b => {
@@ -504,20 +492,23 @@ function draw() {
         });
     });
 
-    // UFO links raus → Game Over
-    // Game Over wenn UFO vollständig links raus (rechte Kante < -5px Puffer)
+    // UFO vollständig links raus → Game Over (rechte Kante < 0)
     if (!gameOver && !roket.isDestroyed) {
         for (let i = 0; i < ufos.length; i++) {
             const u = ufos[i];
-            if (!u._hit && (u.x + u.width) < -5) {
+            if (!u._hit && u.gen === gameGeneration && (u.x + u.width) < 0) {
                 triggerGameOver();
                 break;
             }
         }
     }
 
-    // UFO entfernen wenn abgeschossen ODER vollständig links raus (>10px Puffer)
-    ufos = ufos.filter(u => !u._hit && u.x > -u.width - 10);
+    // UFOs aus Array entfernen: nur abgeschossene UND vollständig vorbeigeflogenene
+    ufos = ufos.filter(u => {
+        if (u._hit) return false;           // abgeschossen → weg
+        if (u.x + u.width < -50) return false; // weit links raus → weg (nach Game Over check)
+        return true;
+    });
 
     // UFOs zeichnen
     ufos.forEach(u => {
@@ -556,7 +547,7 @@ function draw() {
     ctx.fillText('Score: ' + score + '   Best: ' + bestScore, 20, 30);
     ctx.restore();
 
-    // Game Over
+    // Game Over Anzeige
     if (gameOver) {
         const remaining = Math.max(0, Math.ceil((gameOver.endTime - now) / 1000));
         ctx.save();
@@ -564,7 +555,6 @@ function draw() {
         ctx.font = '140px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(remaining.toString(), canvas.width / 2, canvas.height / 2);
         ctx.restore();
-
         ctx.save();
         ctx.fillStyle = 'white'; ctx.font = '72px sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -598,7 +588,7 @@ function softRestart() {
     if (createUfosIntervalId) { clearInterval(createUfosIntervalId); createUfosIntervalId = null; }
     if (collisionIntervalId)  { clearInterval(collisionIntervalId);  collisionIntervalId  = null; }
 
-    gameGeneration++; // alle alten Callbacks ignorieren
+    gameGeneration++; // alle alten Callbacks werden ignoriert
     ufos = []; bullets = []; explosions = [];
     score = 0; bestScore = preservedBest; gameOver = null;
 
@@ -607,14 +597,14 @@ function softRestart() {
     roket.height = Math.round(ROCKET_H * s);
     roket.image  = roket.origImage || roket.image;
     roket.isDestroyed = false;
-    roket.x = 40;
+    roket.x = 50;
     roket.y = canvas.height / 2 - roket.height / 2;
 
     startTime     = performance.now();
     lastFrameTime = startTime;
 
     createUfosIntervalId = setInterval(createufos, 3000);
-    collisionIntervalId  = setInterval(checkforcollisions, 100 / 25);
+    collisionIntervalId  = setInterval(checkforcollisions, 40);
 
     requestAnimationFrame(draw);
 }
