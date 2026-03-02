@@ -8,12 +8,10 @@ const backgroundimage = new Image();
 
 // ── Canvas füllt immer das gesamte Fenster ────────────────────────────────────
 function resizeCanvas() {
-    // screen.width/height im Querformat zuverlässiger als window.innerWidth/Height
-    // auf Samsung Internet und anderen mobilen Browsern
-    const w = document.documentElement.clientWidth  || window.innerWidth;
-    const h = document.documentElement.clientHeight || window.innerHeight;
-    canvas.width  = w;
-    canvas.height = h;
+    // window.innerWidth/Height ist auf allen modernen Browsern zuverlässig
+    // wenn body/html overflow:hidden gesetzt ist (kein Scrollbar-Problem)
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
 }
 window.addEventListener('resize', () => {
     resizeCanvas();
@@ -30,7 +28,7 @@ const ROCKET_W = 200, ROCKET_H = 90;
 const UFO_W    = 100, UFO_H    = 40;
 
 function spriteScale() { return isMobile() ? 0.7 : 1.0; }
-function rocketSpeed() { return isMobile() ? 4 : 7; }  // px pro Frame
+function rocketSpeed() { return isMobile() ? 280 : 480; }  // px pro SEKUNDE (delta-time basiert!)
 
 let roket = {
     x: 50,
@@ -448,13 +446,18 @@ function draw() {
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Delta-Time zuerst berechnen - wird für Rakete UND UFOs genutzt
+    const now = performance.now();
+    const dt  = Math.min(0.05, (now - lastFrameTime) / 1000);
+    lastFrameTime = now;
+
     if (backgroundimage.complete) {
         try { ctx.drawImage(backgroundimage, 0, 0, canvas.width, canvas.height); }
         catch (e) {}
     }
 
-    // Rakete bewegen
-    const spd = rocketSpeed();
+    // Rakete bewegen - delta-time basiert damit Geschwindigkeit auf allen Browsern gleich ist
+    const spd = rocketSpeed() * dt;
     if (!roket.isDestroyed) {
         if (KEY_Up)   roket.y -= spd;
         if (KEY_Down) roket.y += spd;
@@ -464,10 +467,6 @@ function draw() {
     if (roket.image && roket.image.complete) {
         ctx.drawImage(roket.image, roket.x, roket.y, roket.width, roket.height);
     }
-
-    const now = performance.now();
-    const dt  = Math.min(0.05, (now - lastFrameTime) / 1000); // max 50ms delta
-    lastFrameTime = now;
 
     // UFO-Geschwindigkeit
     const elapsed = now - startTime;
