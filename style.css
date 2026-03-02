@@ -1,12 +1,4 @@
-html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    background: black;
-}
-
 canvas {
-    display: block;
-    width: 100vw;
-    height: 100vh;
+background-color: rgba(0,0,0,0.8);
+
 }
