@@ -11,7 +11,7 @@ Steuere deine Rakete, schieße UFOs ab und überlebe so lange wie möglich.
 📸 Preview
 ![Preview](img/rocket_preview.png)
 
-🕹️ Steuerung
+🕹️ Steuerung (auch für mobile phone)
 
 | Taste         | Funktion                |
 | ------------- | ----------------------- |
