@@ -1,13 +1,10 @@
-let KEY_Space = false;
-let KEY_Up = false;
-let KEY_Down = false;
+let KEY_Space = false; // Space
+let KEY_Up = false; // ArrowUp
+let KEY_Down = false; // ArrowDown
 
 const canvas = document.getElementById("canvas");
 let ctx;
-
 const backgroundimage = new Image();
-
-canvas.height = 900;
 
 let roket = {
     x: 50,
@@ -289,20 +286,24 @@ window.addEventListener('keyup', (e) => {
     if (e.code === 'ArrowDown') KEY_Down = false;
 });
 
-function createufos() {
+function createufos(params) {
+    let ufo = {
+     // x will be set to the right edge after width is known
+     y: Math.random() * (canvas.height - 60) + 20,
+     width: 100,
+     height: 40,
+     src: "./img/ufo.png",
+     image: new Image()
 
-    const spawnX = canvas.width + 80; // IMMER komplett rechts außerhalb
-    const spawnY = Math.random() * (canvas.height - 60);
+};
+    // place ufo exactly at the right edge so it's fully visible
+    ufo.x = canvas.width - ufo.width;
+    console.log('createufos: created ufo at x=' + ufo.x + ' y=' + ufo.y + ' (ufos before push=' + ufos.length + ')');
+    ufo.image.onload = () => console.log('ufo loaded at y=' + ufo.y);
+    ufo.image.onerror = () => console.error('Failed to load ufo (src=' + ufo.src + ')');
+    ufo.image.src = ufo.src; // ufo bild wird geladen
+     ufos.push(ufo);
 
-    const ufo = {
-        x: spawnX,
-        y: spawnY,
-        width: 80,
-        height: 60,
-        speed: 4
-    };
-
-    ufos.push(ufo);
 }
 
 function spawnBullet() {
@@ -362,33 +363,32 @@ function createExplosion(cx, cy, opts) {
 
 
 
-async function startGame() {
 
+async function startGame() {
+    // initialize context first
+    if (!canvas) {
+        console.error('Canvas element not found');
+        return;
+    }
     ctx = canvas.getContext('2d');
 
-    if (isMobile()) {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    } else {
-        canvas.width = 1900;
-        canvas.height = 900;
-    }
-
-    setupMobileControls(); //  DAS HIER HAT GEFEHLT
-
+    // Load initial images (background + rocket), then start the render loop
     await loadImages();
+
+    // start procedural background music (may be blocked until user gesture)
     startBgMusic();
 
+    // Create ufos periodically every 3 seconds
     createUfosIntervalId = setInterval(createufos, 3000);
-    collisionIntervalId = setInterval(checkforcollisions, 1000 / 25);
+    collisionIntervalId = setInterval(checkforcollisions, 100 / 25);
+
+    // set game start time and last frame time
+    startTime = performance.now();
+    lastFrameTime = startTime;
 
     requestAnimationFrame(draw);
-}
-// ERST JETZT starten:
-createUfosIntervalId = setInterval(createufos, 3000);
-collisionIntervalId = setInterval(checkforcollisions, 1000 / 25);
 
-requestAnimationFrame(draw);
+}
 
 function checkforcollisions(params) {
     ufos.forEach(function(ufo){
@@ -466,9 +466,6 @@ function waitForImage(img, name) {
 }
 
 function draw() {
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-ctx.drawImage(backgroundimage, 0, 0, canvas.width, canvas.height);
     if (!ctx) return;
     // clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -716,59 +713,3 @@ function softRestart() {
 }
 
 window.startGame = startGame;
-
-
-// ======================
-// CLEAN MOBILE SUPPORT
-// ======================
-
-function isMobile() {
-    return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-function setupMobileControls() {
-
-    if (!isMobile()) return;
-
-    // Mobile Canvas Größe korrekt setzen
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    // Rocket kleiner auf Mobile
-    roket.width = 100;
-    roket.height = 45;
-
-    let lastTap = 0;
-
-    canvas.addEventListener("pointermove", (e) => {
-
-        if (e.pointerType !== "touch") return;
-
-        const rect = canvas.getBoundingClientRect();
-        const y = e.clientY - rect.top;
-
-        roket.y = y - roket.height / 2;
-
-        if (roket.y < 0) roket.y = 0;
-        if (roket.y + roket.height > canvas.height)
-            roket.y = canvas.height - roket.height;
-
-    });
-
-    canvas.addEventListener("pointerdown", (e) => {
-
-        if (e.pointerType !== "touch") return;
-
-        const now = Date.now();
-
-        if (now - lastTap < 300) {
-            if (!roket.isDestroyed && !gameOver) {
-                spawnBullet();
-            }
-        }
-
-        lastTap = now;
-
-    });
-}
-
