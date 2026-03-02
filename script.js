@@ -385,7 +385,10 @@ async function startGame() {
     requestAnimationFrame(draw);
 }
 // ERST JETZT starten:
+createUfosIntervalId = setInterval(createufos, 3000);
+collisionIntervalId = setInterval(checkforcollisions, 1000 / 25);
 
+requestAnimationFrame(draw);
 
 function checkforcollisions(params) {
     ufos.forEach(function(ufo){
