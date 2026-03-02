@@ -374,8 +374,6 @@ async function startGame() {
         canvas.height = 900;
     }
 
-    setupMobileControls(); //  DAS HIER HAT GEFEHLT
-
     await loadImages();
     startBgMusic();
 
