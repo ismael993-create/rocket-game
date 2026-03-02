@@ -289,24 +289,20 @@ window.addEventListener('keyup', (e) => {
     if (e.code === 'ArrowDown') KEY_Down = false;
 });
 
-function createufos(params) {
+function createufos() {
+
+    let x = canvas.width + 50;   // <-- WICHTIG
+    let y = Math.random() * (canvas.height - 100);
+
     let ufo = {
-     // x will be set to the right edge after width is known
-     y: Math.random() * (canvas.height - 60) + 20,
-     width: 100,
-     height: 40,
-     src: "./img/ufo.png",
-     image: new Image()
+        x: x,
+        y: y,
+        width: 80,
+        height: 60,
+        speed: 4
+    };
 
-};
-    // place ufo exactly at the right edge so it's fully visible
-    ufo.x = canvas.width - ufo.width;
-    console.log('createufos: created ufo at x=' + ufo.x + ' y=' + ufo.y + ' (ufos before push=' + ufos.length + ')');
-    ufo.image.onload = () => console.log('ufo loaded at y=' + ufo.y);
-    ufo.image.onerror = () => console.error('Failed to load ufo (src=' + ufo.src + ')');
-    ufo.image.src = ufo.src; // ufo bild wird geladen
-     ufos.push(ufo);
-
+    ufos.push(ufo);
 }
 
 function spawnBullet() {
@@ -478,6 +474,9 @@ function waitForImage(img, name) {
 }
 
 function draw() {
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+ctx.drawImage(backgroundimage, 0, 0, canvas.width, canvas.height);
     if (!ctx) return;
     // clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
