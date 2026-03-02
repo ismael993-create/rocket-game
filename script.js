@@ -2,93 +2,15 @@ let KEY_Space = false; // Space
 let KEY_Up = false; // ArrowUp
 let KEY_Down = false; // ArrowDown
 
-// global vars used by many functions
-let canvas, ctx;
+const canvas = document.getElementById("canvas");
+let ctx;
 const backgroundimage = new Image();
-
-// high‑dpi & mobile scale support
-let pixelRatio = window.devicePixelRatio || 1;
-let scale = 1;                  // overall game scale (<=1 on narrow screens)
-const MOBILE_BASE_WIDTH = 800;  // width at which scale becomes 1
-const MOBILE_SCALE_FACTOR = 0.5; // additionally shrink on phones
-const MOBILE_SPEED_FACTOR = 0.4; // slow movement/ufos further on small screens
-// user-requested extra halving on phones
-const MOBILE_SIZE_REDUCTION = 0.5;   // additional multiplicative reduction for UFOs
-const MOBILE_SPEED_REDUCTION = 0.5;  // additional speed reduction for UFOs
-const MOBILE_TOUCH_REDUCTION = 0.5;  // additional reduction for rocket touch movement
-
-// new user-requested adjustments
-const ROCKET_EXTRA_SCALE = 2;        // double rocket size on mobile
-const UFO_SPEED_REDUCTION_FACTOR = 2/3; // reduce UFO speed by one third more
-const BULLET_SPEED_BOOST = 2;        // double bullet speed
-
-// additional orientation-specific reductions
-const PORTRAIT_TOUCH_FACTOR = 0.5;     // further slow touch movement in portrait
-const PORTRAIT_UFO_SPEED_FACTOR = 0.5; // further slow UFOs in portrait
-// overall extra reduction when running on mobile screens
-const MOBILE_UFO_EXTRA_SLOW = 0.15;    // multiply speed by this on any small display (smaller = slower)
-const MOBILE_UFO_SIZE_BOOST = 1.3;     // enlarge UFOs on mobile
-
-function logicalWidth() { return canvas ? canvas.width / pixelRatio : 0; }
-function logicalHeight() { return canvas ? canvas.height / pixelRatio : 0; }
-
-// wait for DOM so we can query the canvas element and set up resizing
-document.addEventListener("DOMContentLoaded", function () {
-    canvas = document.getElementById("canvas");
-    ctx = canvas.getContext("2d");
-
-    function resizeCanvas() {
-        const ratio = window.devicePixelRatio || 1;
-        pixelRatio = ratio;
-        // set actual pixel dimensions for high‑DPI displays
-        canvas.width = window.innerWidth * ratio;
-        canvas.height = window.innerHeight * ratio;
-        // keep the CSS size at full viewport so page layout stays the same
-        canvas.style.width = window.innerWidth + 'px';
-        canvas.style.height = window.innerHeight + 'px';
-
-        // update scale based on logical width (narrower => smaller)
-        if (logicalWidth() < MOBILE_BASE_WIDTH) {
-            scale = (logicalWidth() / MOBILE_BASE_WIDTH) * MOBILE_SCALE_FACTOR;
-            // enforce a minimum so things don't vanish completely
-            scale = Math.max(scale, 0.2);
-        } else {
-            scale = 1;
-        }
-
-        // adjust rocket size according to scale
-        if (roket) {
-            let rocketScale = scale;
-            if (scale < 1) rocketScale *= ROCKET_EXTRA_SCALE;
-            roket.width = BASE_ROCKET_WIDTH * rocketScale;
-            roket.height = BASE_ROCKET_HEIGHT * rocketScale;
-            // keep rocket on screen after resize
-            roket.y = Math.max(0, Math.min(roket.y, logicalHeight() - roket.height));
-        }
-
-        // scale drawing operations so they match CSS pixels
-        if (ctx) {
-            ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-        }
-    }
-    window.addEventListener("resize", resizeCanvas);
-    resizeCanvas();
-
-    // touch controls require a valid canvas element
-    if (typeof initTouchControls === 'function') {
-        initTouchControls();
-    }
-});
-
-// base dimensions used for scaling
-const BASE_ROCKET_WIDTH = 200;
-const BASE_ROCKET_HEIGHT = 90;
 
 let roket = {
     x: 50,
-    y: 0, // will be initialized when canvas size is known
-    width: BASE_ROCKET_WIDTH,
-    height: BASE_ROCKET_HEIGHT,
+    y: 350,
+    width: 200,
+    height: 90,
     src: "./img/rocket.png",
     image: null
 };
@@ -365,30 +287,17 @@ window.addEventListener('keyup', (e) => {
 });
 
 function createufos(params) {
-    // size UFO according to current scale, then apply extra halving for mobile
-    let U_WIDTH = 100 * scale;
-    let U_HEIGHT = 40 * scale;
-    if (scale < 1) {
-        U_WIDTH *= MOBILE_SIZE_REDUCTION;
-        U_HEIGHT *= MOBILE_SIZE_REDUCTION;
-        // enlarge slightly after reduction
-        U_WIDTH *= MOBILE_UFO_SIZE_BOOST;
-        U_HEIGHT *= MOBILE_UFO_SIZE_BOOST;
-        // as requested, double size on mobiles
-        U_WIDTH *= 2;
-        U_HEIGHT *= 2;
-    }
     let ufo = {
      // x will be set to the right edge after width is known
-     y: Math.random() * (logicalHeight() - U_HEIGHT - 20) + 20,
-     width: U_WIDTH,
-     height: U_HEIGHT,
+     y: Math.random() * (canvas.height - 60) + 20,
+     width: 100,
+     height: 40,
      src: "./img/ufo.png",
      image: new Image()
 
 };
     // place ufo exactly at the right edge so it's fully visible
-    ufo.x = logicalWidth() - ufo.width;
+    ufo.x = canvas.width - ufo.width;
     console.log('createufos: created ufo at x=' + ufo.x + ' y=' + ufo.y + ' (ufos before push=' + ufos.length + ')');
     ufo.image.onload = () => console.log('ufo loaded at y=' + ufo.y);
     ufo.image.onerror = () => console.error('Failed to load ufo (src=' + ufo.src + ')');
@@ -401,10 +310,8 @@ function spawnBullet() {
     // Bullet originates from the front of the rocket
     const bx = roket.x + roket.width;
     const by = roket.y + roket.height / 2;
-    // adjust bullet speed/size with scale (slower and shorter on mobile)
-    // reduce bullet speed on mobile as well
-    const bulletSpeedFactor = scale < 1 ? MOBILE_SPEED_FACTOR : 1;
-    bullets.push({ x: bx, y: by, vx: 800 * scale * bulletSpeedFactor * BULLET_SPEED_BOOST, length: LASER_LENGTH * scale, height: LASER_HEIGHT * scale });
+    // vx now in pixels per second
+    bullets.push({ x: bx, y: by, vx: 800, length: LASER_LENGTH, height: LASER_HEIGHT });
     // play a short laser sound
     playLaserSound();
 }
@@ -464,13 +371,6 @@ async function startGame() {
         return;
     }
     ctx = canvas.getContext('2d');
-
-    // center rocket vertically according to current canvas size
-    let rocketScale = scale;
-    if (scale < 1) rocketScale *= ROCKET_EXTRA_SCALE;
-    roket.width = BASE_ROCKET_WIDTH * rocketScale;
-    roket.height = BASE_ROCKET_HEIGHT * rocketScale;
-    roket.y = (logicalHeight() - roket.height) / 2;
 
     // Load initial images (background + rocket), then start the render loop
     await loadImages();
@@ -567,16 +467,13 @@ function waitForImage(img, name) {
 
 function draw() {
     if (!ctx) return;
-    // clear (physical pixels – unaffected by transform)
+    // clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const w = logicalWidth();
-    const h = logicalHeight();
-
-    // draw background stretched to logical size
+    // draw background stretched to canvas
     if (backgroundimage && backgroundimage.complete) {
         try {
-            ctx.drawImage(backgroundimage, 0, 0, w, h);
+            ctx.drawImage(backgroundimage, 0, 0, canvas.width, canvas.height);
         } catch (e) {
             console.warn('Could not draw background:', e);
         }
@@ -584,22 +481,11 @@ function draw() {
 
     // simple controls for rocket (disabled when destroyed)
     if (!roket.isDestroyed) {
-        // rocket speed always constant (9) but may have orientation-based slow factor
-        let speedFactor = 1;
-        if (scale < 1) {
-            // keep previous portrait slow, but do not apply scale reduction
-            speedFactor = MOBILE_SPEED_FACTOR * MOBILE_TOUCH_REDUCTION;
-        }
-        if (logicalHeight() > logicalWidth()) {
-            speedFactor *= PORTRAIT_TOUCH_FACTOR;
-        }
-        let step = 9 * speedFactor;
-        if (scale < 1) step *= 2; // double speed on mobile screens
-        if (KEY_Up) roket.y -= step;
-        if (KEY_Down) roket.y += step;
+        if (KEY_Up) roket.y -= 9;
+        if (KEY_Down) roket.y += 9;
         // clamp rocket to canvas
         if (roket.y < 0) roket.y = 0;
-        if (roket.y + roket.height > h) roket.y = h - roket.height;
+        if (roket.y + roket.height > canvas.height) roket.y = canvas.height - roket.height;
     }
     if (roket.image && roket.image.complete) {
         ctx.drawImage(roket.image, roket.x, roket.y, roket.width, roket.height);
@@ -611,21 +497,8 @@ function draw() {
     lastFrameTime = now;
 
     // determine ufo speed in px/s. We'll ramp from base to max linearly over SPEED_RAMP_DURATION after SPEED_INCREASE_START.
-    // Calculate max speed so that an ufo spawned at right edge reaches rocket.x in ~1s: maxSpeed = (logicalWidth() - roket.x) / 1s
-    let maxSpeedPPS = Math.max(200, (logicalWidth() - roket.x) / 1.0);
-    // slow UFOs based on scale, mobile speed reduction, additional halving
-    let speedFactor = scale < 1 ? MOBILE_SPEED_FACTOR * MOBILE_SPEED_REDUCTION : 1;
-    maxSpeedPPS *= scale * speedFactor * UFO_SPEED_REDUCTION_FACTOR;
-    // global mobile slowdown
-    if (scale < 1) {
-        maxSpeedPPS *= MOBILE_UFO_EXTRA_SLOW;
-        // also cut UFO speed by additional half per request
-        maxSpeedPPS *= 0.5;
-    }
-    // further reduce in portrait orientation
-    if (logicalHeight() > logicalWidth()) {
-        maxSpeedPPS *= PORTRAIT_UFO_SPEED_FACTOR;
-    }
+    // Calculate max speed so that an ufo spawned at right edge reaches rocket.x in ~1s: maxSpeed = (canvas.width - roket.x) / 1s
+    const maxSpeedPPS = Math.max(200, (canvas.width - roket.x) / 1.0);
     const elapsed = now - startTime;
     if (elapsed <= SPEED_INCREASE_START) {
         ufoSpeedPPS = UFO_BASE_SPEED_PPS;
@@ -649,7 +522,7 @@ function draw() {
 
     // Remove bullets off-screen
     bullets = bullets.filter(function(b){
-        return b.x - b.length < logicalWidth();
+        return b.x - b.length < canvas.width;
     });
 
     // Bullet <-> Ufo collision: check and apply score (rectangular laser collision)
@@ -670,7 +543,7 @@ function draw() {
                     // play explosion sound
                     playExplosionSound();
                     // mark bullet for removal by moving it off-screen
-                    b.x = logicalWidth() + 1000;
+                    b.x = canvas.width + 1000;
                     score += 10;
                     if (score > bestScore) { bestScore = score; localStorage.setItem('bestScore', bestScore); }
                 }
@@ -759,7 +632,7 @@ function draw() {
         ctx.font = '140px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(remaining.toString(), logicalWidth() / 2, logicalHeight() / 2);
+        ctx.fillText(remaining.toString(), canvas.width / 2, canvas.height / 2);
         ctx.restore();
 
         // GAME OVER text (white)
@@ -768,7 +641,7 @@ function draw() {
         ctx.font = '72px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('GAME OVER', logicalWidth() / 2, logicalHeight() / 2 - 10);
+        ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 10);
         ctx.restore();
     }
 
@@ -777,7 +650,7 @@ function draw() {
     ctx.fillStyle = 'lightgray';
     ctx.font = '16px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText('UFO speed: ' + Math.round(ufoSpeedPPS) + ' px/s', logicalWidth() - 10, logicalHeight() - 10);
+    ctx.fillText('UFO speed: ' + Math.round(ufoSpeedPPS) + ' px/s', canvas.width - 10, canvas.height - 10);
     ctx.restore();
     // optional background volume overlay
     if (showBgOverlay) {
@@ -825,12 +698,7 @@ function softRestart() {
     roket.image = roket.origImage || roket.image;
     roket.isDestroyed = false;
     roket.x = 50;
-    // reapply scaled dimensions and center vertically
-    let rocketScale = scale;
-    if (scale < 1) rocketScale *= ROCKET_EXTRA_SCALE;
-    roket.width = BASE_ROCKET_WIDTH * rocketScale;
-    roket.height = BASE_ROCKET_HEIGHT * rocketScale;
-    roket.y = (logicalHeight() - roket.height) / 2;
+    roket.y = 350;
 
     // reset timers
     startTime = performance.now();
@@ -845,50 +713,3 @@ function softRestart() {
 }
 
 window.startGame = startGame;
-
-
-// ============================
-// MOBILE TOUCH CONTROLS
-// ============================
-
-function initTouchControls() {
-    let touchStartY = null;
-
-    canvas.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        touchStartY = touch.clientY;
-
-        // rechte Bildschirmhälfte = schießen
-        if (touch.clientX > logicalWidth() / 2) {
-            const now = performance.now();
-            if (!roket.isDestroyed && !gameOver && (now - lastShotTime) > SHOT_COOLDOWN) {
-                spawnBullet();
-                lastShotTime = now;
-            }
-        }
-    });
-
-    canvas.addEventListener("touchmove", (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const moveY = touch.clientY;
-
-        if (moveY < logicalHeight() / 2) {
-            KEY_Up = true;
-            KEY_Down = false;
-        } else {
-            KEY_Down = true;
-            KEY_Up = false;
-        }
-    });
-
-    canvas.addEventListener("touchend", () => {
-        KEY_Up = false;
-        KEY_Down = false;
-    });
-
-    document.body.addEventListener("touchmove", function(e){
-        e.preventDefault();
-    }, { passive:false });
-}
