@@ -8,4 +8,5 @@ html, body {
 canvas {
     display: block;
     touch-action: none;
+   
 }

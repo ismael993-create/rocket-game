@@ -368,38 +368,24 @@ function createExplosion(cx, cy, opts) {
 
 
 async function startGame() {
-    // initialize context first
+
     if (!canvas) {
         console.error('Canvas element not found');
         return;
     }
+
     ctx = canvas.getContext('2d');
-if (isMobileDevice()) {
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // Desktop Standardgröße
+    if (!isMobile()) {
+        canvas.width = 1900;
+        canvas.height = 900;
+    }
 
-    roket.width = 100;
-    roket.height = 45;
+    setupMobileControls();
 
-}
-
-    // Load initial images (background + rocket), then start the render loop
     await loadImages();
-
-    // start procedural background music (may be blocked until user gesture)
     startBgMusic();
-
-    // Create ufos periodically every 3 seconds
-    createUfosIntervalId = setInterval(createufos, 3000);
-    collisionIntervalId = setInterval(checkforcollisions, 100 / 25);
-
-    // set game start time and last frame time
-    startTime = performance.now();
-    lastFrameTime = startTime;
-
-    requestAnimationFrame(draw);
-
 }
 
 function checkforcollisions(params) {
@@ -728,82 +714,26 @@ window.startGame = startGame;
 
 
 // ======================
-// TOUCH CONTROLS (FIXED)
+// CLEAN MOBILE SUPPORT
 // ======================
 
-let lastTap = 0;
+function isMobile() {
+    return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
 
-// Touch bewegen = Rakete folgt Finger
-canvas.addEventListener("touchmove", function (e) {
-    e.preventDefault();
+function setupMobileControls() {
 
-    if (!e.touches || e.touches.length === 0) return;
+    if (!isMobile()) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const touchY = e.touches[0].clientY - rect.top;
-
-    roket.y = touchY - roket.height / 2;
-
-    if (roket.y < 0) roket.y = 0;
-    if (roket.y + roket.height > canvas.height)
-        roket.y = canvas.height - roket.height;
-
-}, { passive: false });
-
-
-// Doppeltipp = Schießen
-canvas.addEventListener("touchstart", function (e) {
-    e.preventDefault();
-
-    const now = Date.now();
-
-    if (now - lastTap < 300) {
-        if (!roket.isDestroyed && !gameOver) {
-            spawnBullet();
-        }
-    }
-
-    lastTap = now;
-
-}, { passive: false });
-
-// ======================
-// MOBILE SCALING
-// ======================
-
-if (window.innerWidth <= 768) {
+    // Mobile Canvas Größe korrekt setzen
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
+    // Rocket kleiner auf Mobile
     roket.width = 100;
     roket.height = 45;
 
-    // UFOs kleiner machen
-    const originalCreateUfos = createufos;
-    createufos = function () {
-        let ufo = {
-            y: Math.random() * (canvas.height - 40) + 10,
-            width: 60,
-            height: 25,
-            src: "./img/ufo.png",
-            image: new Image()
-        };
-
-        ufo.x = canvas.width - ufo.width;
-        ufo.image.src = ufo.src;
-        ufos.push(ufo);
-    };
-}
-
-// ======================
-// MOBILE POINTER CONTROL
-// ======================
-
-if (isMobileDevice()) {
-
     let lastTap = 0;
-
-    canvas.style.touchAction = "none";
 
     canvas.addEventListener("pointermove", (e) => {
 
@@ -835,5 +765,4 @@ if (isMobileDevice()) {
         lastTap = now;
 
     });
-
 }
