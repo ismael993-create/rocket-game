@@ -374,6 +374,8 @@ async function startGame() {
         canvas.height = 900;
     }
 
+    setupMobileControls(); //  DAS HIER HAT GEFEHLT
+
     await loadImages();
     startBgMusic();
 
@@ -383,10 +385,7 @@ async function startGame() {
     requestAnimationFrame(draw);
 }
 // ERST JETZT starten:
-createUfosIntervalId = setInterval(createufos, 3000);
-collisionIntervalId = setInterval(checkforcollisions, 1000 / 25);
 
-requestAnimationFrame(draw);
 
 function checkforcollisions(params) {
     ufos.forEach(function(ufo){
@@ -705,12 +704,7 @@ function softRestart() {
     startTime = performance.now();
     lastFrameTime = startTime;
 
-    // restart intervals
-    createUfosIntervalId = setInterval(createufos, 3000);
-    collisionIntervalId = setInterval(checkforcollisions, 100 / 25);
-
-    // resume the draw loop (it's already running via rAF, but ensure state is fresh)
-    requestAnimationFrame(draw);
+   
 }
 
 window.startGame = startGame;
