@@ -1,13 +1,13 @@
-let KEY_Space = false; // Space
-let KEY_Up = false; // ArrowUp
-let KEY_Down = false; // ArrowDown
+let KEY_Space = false;
+let KEY_Up = false;
+let KEY_Down = false;
 
-let canvas;
-window.addEventListener("DOMContentLoaded", () => {
-    canvas = document.getElementById("canvas");
-});
+const canvas = document.getElementById("canvas");
 let ctx;
+
 const backgroundimage = new Image();
+canvas.width = 1900;
+canvas.height = 900;
 
 let roket = {
     x: 50,
@@ -765,4 +765,51 @@ function setupMobileControls() {
         lastTap = now;
 
     });
+}
+
+// ======================
+// MOBILE CONTROL (FINAL)
+// ======================
+
+function isMobile() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+if (isMobile()) {
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    roket.width = 100;
+    roket.height = 45;
+
+    let lastTap = 0;
+
+    canvas.addEventListener("touchmove", function (e) {
+
+        const rect = canvas.getBoundingClientRect();
+        const y = e.touches[0].clientY - rect.top;
+
+        roket.y = y - roket.height / 2;
+
+        if (roket.y < 0) roket.y = 0;
+        if (roket.y + roket.height > canvas.height)
+            roket.y = canvas.height - roket.height;
+
+    });
+
+    canvas.addEventListener("touchstart", function (e) {
+
+        const now = Date.now();
+
+        if (now - lastTap < 300) {
+            if (!roket.isDestroyed && !gameOver) {
+                spawnBullet();
+            }
+        }
+
+        lastTap = now;
+
+    });
+
 }
