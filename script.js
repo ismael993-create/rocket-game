@@ -2,7 +2,10 @@ let KEY_Space = false; // Space
 let KEY_Up = false; // ArrowUp
 let KEY_Down = false; // ArrowDown
 
-const canvas = document.getElementById("canvas");
+let canvas;
+window.addEventListener("DOMContentLoaded", () => {
+    canvas = document.getElementById("canvas");
+});
 let ctx;
 const backgroundimage = new Image();
 
@@ -716,46 +719,44 @@ window.startGame = startGame;
 
 
 // ======================
-// TOUCH CONTROLS (Mobile)
+// TOUCH CONTROLS (FIXED)
 // ======================
 
 let lastTap = 0;
 
-function isMobile() {
-    return window.innerWidth <= 768;
-}
+// Touch bewegen = Rakete folgt Finger
+canvas.addEventListener("touchmove", function (e) {
+    e.preventDefault();
 
+    if (!e.touches || e.touches.length === 0) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const touchY = e.touches[0].clientY - rect.top;
+
+    roket.y = touchY - roket.height / 2;
+
+    if (roket.y < 0) roket.y = 0;
+    if (roket.y + roket.height > canvas.height)
+        roket.y = canvas.height - roket.height;
+
+}, { passive: false });
+
+
+// Doppeltipp = Schießen
 canvas.addEventListener("touchstart", function (e) {
     e.preventDefault();
 
-    const touch = e.touches[0];
-    const tapTime = new Date().getTime();
+    const now = Date.now();
 
-    // Double tap = shoot
-    if (tapTime - lastTap < 300) {
+    if (now - lastTap < 300) {
         if (!roket.isDestroyed && !gameOver) {
             spawnBullet();
         }
     }
 
-    lastTap = tapTime;
-});
+    lastTap = now;
 
-canvas.addEventListener("touchmove", function (e) {
-    e.preventDefault();
-
-    const touch = e.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    const touchY = touch.clientY - rect.top;
-
-    // Rakete folgt Finger
-    roket.y = touchY - roket.height / 2;
-
-    // Begrenzen
-    if (roket.y < 0) roket.y = 0;
-    if (roket.y + roket.height > canvas.height)
-        roket.y = canvas.height - roket.height;
-});
+}, { passive: false });
 
 // ======================
 // MOBILE SCALING
