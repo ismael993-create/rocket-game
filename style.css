@@ -7,15 +7,16 @@ html, body {
     overflow: hidden;
 }
 
-/* Canvas füllt immer den gesamten Bildschirm */
+/* Canvas füllt immer den gesamten Bildschirm - kein Balken */
 canvas {
     display: block;
-    width: 100% !important;
-    height: 100% !important;
+    width: 100vw !important;
+    height: 100vh !important;
     background: #000;
     touch-action: none;
     position: fixed;
-    top: 0; left: 0;
+    top: 0; left: 0; right: 0; bottom: 0;
+    object-fit: fill;
 }
 
 /* ── Querformat-Overlay ─────────────────────────────────────── */

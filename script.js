@@ -8,8 +8,12 @@ const backgroundimage = new Image();
 
 // ── Canvas füllt immer das gesamte Fenster ────────────────────────────────────
 function resizeCanvas() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // screen.width/height im Querformat zuverlässiger als window.innerWidth/Height
+    // auf Samsung Internet und anderen mobilen Browsern
+    const w = document.documentElement.clientWidth  || window.innerWidth;
+    const h = document.documentElement.clientHeight || window.innerHeight;
+    canvas.width  = w;
+    canvas.height = h;
 }
 window.addEventListener('resize', () => {
     resizeCanvas();
@@ -305,7 +309,11 @@ function showPortraitOverlay() {
     overlay.style.display = (window.innerHeight > window.innerWidth) ? 'flex' : 'none';
 }
 
-window.addEventListener('orientationchange', () => setTimeout(() => { resizeCanvas(); showPortraitOverlay(); }, 200));
+window.addEventListener('orientationchange', () => {
+    // Mehrfach verzögert aufrufen da Browser unterschiedlich lange brauchen
+    setTimeout(() => { resizeCanvas(); showPortraitOverlay(); }, 100);
+    setTimeout(() => { resizeCanvas(); showPortraitOverlay(); }, 400);
+});
 
 // ── UFO erstellen ─────────────────────────────────────────────────────────────
 function createufos() {
@@ -466,9 +474,10 @@ function draw() {
     if (elapsed <= SPEED_INCREASE_START) {
         ufoSpeedPPS = UFO_BASE_SPEED_PPS;
     } else {
+        // Geschwindigkeit linear von Basis (300) bis Max (770) über 2 Minuten
+        // Unabhängig von Bildschirmgröße damit Handy und Desktop gleich schnell werden
         const t = Math.min(1, (elapsed - SPEED_INCREASE_START) / SPEED_GROWTH_TIME_TO_MAX_MS);
-        const maxSpeedPPS = Math.max(200, (canvas.width - roket.x) / 1.0);
-        ufoSpeedPPS = Math.min(UFO_MAX_SPEED_PPS, UFO_BASE_SPEED_PPS + (maxSpeedPPS - UFO_BASE_SPEED_PPS) * t);
+        ufoSpeedPPS = UFO_BASE_SPEED_PPS + (UFO_MAX_SPEED_PPS - UFO_BASE_SPEED_PPS) * t;
     }
 
     // UFOs & Bullets bewegen
