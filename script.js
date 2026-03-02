@@ -713,3 +713,74 @@ function softRestart() {
 }
 
 window.startGame = startGame;
+
+
+// ======================
+// TOUCH CONTROLS (Mobile)
+// ======================
+
+let lastTap = 0;
+
+function isMobile() {
+    return window.innerWidth <= 768;
+}
+
+canvas.addEventListener("touchstart", function (e) {
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    const tapTime = new Date().getTime();
+
+    // Double tap = shoot
+    if (tapTime - lastTap < 300) {
+        if (!roket.isDestroyed && !gameOver) {
+            spawnBullet();
+        }
+    }
+
+    lastTap = tapTime;
+});
+
+canvas.addEventListener("touchmove", function (e) {
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const touchY = touch.clientY - rect.top;
+
+    // Rakete folgt Finger
+    roket.y = touchY - roket.height / 2;
+
+    // Begrenzen
+    if (roket.y < 0) roket.y = 0;
+    if (roket.y + roket.height > canvas.height)
+        roket.y = canvas.height - roket.height;
+});
+
+// ======================
+// MOBILE SCALING
+// ======================
+
+if (window.innerWidth <= 768) {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    roket.width = 100;
+    roket.height = 45;
+
+    // UFOs kleiner machen
+    const originalCreateUfos = createufos;
+    createufos = function () {
+        let ufo = {
+            y: Math.random() * (canvas.height - 40) + 10,
+            width: 60,
+            height: 25,
+            src: "./img/ufo.png",
+            image: new Image()
+        };
+
+        ufo.x = canvas.width - ufo.width;
+        ufo.image.src = ufo.src;
+        ufos.push(ufo);
+    };
+}
