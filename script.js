@@ -6,7 +6,7 @@ const canvas = document.getElementById("canvas");
 let ctx;
 
 const backgroundimage = new Image();
-canvas.width = 1900;
+
 canvas.height = 900;
 
 let roket = {
@@ -362,21 +362,27 @@ function createExplosion(cx, cy, opts) {
 
 
 
-
 async function startGame() {
 
-ctx = canvas.getContext('2d');
+    ctx = canvas.getContext('2d');
 
-if (isMobile()) {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-} else {
-    canvas.width = 1900;
-    canvas.height = 900;
-}
+    if (isMobile()) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    } else {
+        canvas.width = 1900;
+        canvas.height = 900;
+    }
 
-await loadImages();
-startBgMusic();
+    setupMobileControls(); //  DAS HIER HAT GEFEHLT
+
+    await loadImages();
+    startBgMusic();
+
+    createUfosIntervalId = setInterval(createufos, 3000);
+    collisionIntervalId = setInterval(checkforcollisions, 1000 / 25);
+
+    requestAnimationFrame(draw);
 }
 // ERST JETZT starten:
 createUfosIntervalId = setInterval(createufos, 3000);
