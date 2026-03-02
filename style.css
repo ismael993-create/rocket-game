@@ -54,20 +54,20 @@ canvas {
 #touchControls {
     display: none;
     position: fixed;
-    bottom: 12px;
-    left: 12px;
-    gap: 12px;
+    bottom: 16px;
+    left: 16px;
+    gap: 10px;
     z-index: 100;
     flex-direction: row;
 }
 
 .touch-btn {
-    width: 90px;
-    height: 90px;
+    width: 60px;
+    height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.4rem;
+    font-size: 1.6rem;
     color: rgba(255, 255, 255, 0.6);
     background: rgba(255, 255, 255, 0.08);
     border: 2px solid rgba(255, 255, 255, 0.25);

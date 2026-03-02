@@ -53,6 +53,7 @@ let explosions  = [];
 let score       = 0;
 let bestScore   = parseInt(localStorage.getItem('bestScore')) || 0;
 let gameOver    = null;
+let gameGeneration = 0; // erhöht bei jedem Neustart, verhindert veraltete Callbacks
 let createUfosIntervalId = null;
 let collisionIntervalId  = null;
 let bullets      = [];
@@ -393,6 +394,7 @@ async function startGame() {
     createUfosIntervalId = setInterval(createufos, 3000);
     collisionIntervalId  = setInterval(checkforcollisions, 100 / 25);
 
+    gameGeneration++;
     startTime     = performance.now();
     lastFrameTime = startTime;
     requestAnimationFrame(draw);
@@ -401,6 +403,7 @@ async function startGame() {
 // ── Kollisionsprüfung ─────────────────────────────────────────────────────────
 function checkforcollisions() {
     if (roket.isDestroyed || gameOver) return;
+    if (ufos.length === 0) return; // keine UFOs = nichts zu prüfen
     ufos.forEach(function(ufo) {
         if (ufo._hit) return;
         if (roket.x < ufo.x + ufo.width  &&
@@ -502,16 +505,19 @@ function draw() {
     });
 
     // UFO links raus → Game Over
+    // Game Over wenn UFO vollständig links raus (rechte Kante < -5px Puffer)
     if (!gameOver && !roket.isDestroyed) {
         for (let i = 0; i < ufos.length; i++) {
-            if (!ufos[i]._hit && (ufos[i].x + ufos[i].width) < 0) {
+            const u = ufos[i];
+            if (!u._hit && (u.x + u.width) < -5) {
                 triggerGameOver();
                 break;
             }
         }
     }
 
-    ufos = ufos.filter(u => !u._hit && (u.x + u.width) > 0);
+    // UFO entfernen wenn abgeschossen ODER vollständig links raus (>10px Puffer)
+    ufos = ufos.filter(u => !u._hit && u.x > -u.width - 10);
 
     // UFOs zeichnen
     ufos.forEach(u => {
@@ -592,6 +598,7 @@ function softRestart() {
     if (createUfosIntervalId) { clearInterval(createUfosIntervalId); createUfosIntervalId = null; }
     if (collisionIntervalId)  { clearInterval(collisionIntervalId);  collisionIntervalId  = null; }
 
+    gameGeneration++; // alle alten Callbacks ignorieren
     ufos = []; bullets = []; explosions = [];
     score = 0; bestScore = preservedBest; gameOver = null;
 
