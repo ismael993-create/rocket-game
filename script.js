@@ -374,6 +374,15 @@ async function startGame() {
         return;
     }
     ctx = canvas.getContext('2d');
+if (isMobileDevice()) {
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    roket.width = 100;
+    roket.height = 45;
+
+}
 
     // Load initial images (background + rocket), then start the render loop
     await loadImages();
@@ -784,4 +793,47 @@ if (window.innerWidth <= 768) {
         ufo.image.src = ufo.src;
         ufos.push(ufo);
     };
+}
+
+// ======================
+// MOBILE POINTER CONTROL
+// ======================
+
+if (isMobileDevice()) {
+
+    let lastTap = 0;
+
+    canvas.style.touchAction = "none";
+
+    canvas.addEventListener("pointermove", (e) => {
+
+        if (e.pointerType !== "touch") return;
+
+        const rect = canvas.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+
+        roket.y = y - roket.height / 2;
+
+        if (roket.y < 0) roket.y = 0;
+        if (roket.y + roket.height > canvas.height)
+            roket.y = canvas.height - roket.height;
+
+    });
+
+    canvas.addEventListener("pointerdown", (e) => {
+
+        if (e.pointerType !== "touch") return;
+
+        const now = Date.now();
+
+        if (now - lastTap < 300) {
+            if (!roket.isDestroyed && !gameOver) {
+                spawnBullet();
+            }
+        }
+
+        lastTap = now;
+
+    });
+
 }
