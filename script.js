@@ -376,8 +376,13 @@ async function startGame() {
 
     ctx = canvas.getContext('2d');
 
-    // Desktop Standardgröße
-    if (!isMobile()) {
+    if (isMobile()) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        roket.width = 100;
+        roket.height = 45;
+    } else {
         canvas.width = 1900;
         canvas.height = 900;
     }
@@ -385,7 +390,16 @@ async function startGame() {
     setupMobileControls();
 
     await loadImages();
+
     startBgMusic();
+
+    createUfosIntervalId = setInterval(createufos, 3000);
+    collisionIntervalId = setInterval(checkforcollisions, 1000 / 25);
+
+    startTime = performance.now();
+    lastFrameTime = startTime;
+
+    requestAnimationFrame(draw);
 }
 
 function checkforcollisions(params) {
@@ -767,49 +781,3 @@ function setupMobileControls() {
     });
 }
 
-// ======================
-// MOBILE CONTROL (FINAL)
-// ======================
-
-function isMobile() {
-    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-if (isMobile()) {
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    roket.width = 100;
-    roket.height = 45;
-
-    let lastTap = 0;
-
-    canvas.addEventListener("touchmove", function (e) {
-
-        const rect = canvas.getBoundingClientRect();
-        const y = e.touches[0].clientY - rect.top;
-
-        roket.y = y - roket.height / 2;
-
-        if (roket.y < 0) roket.y = 0;
-        if (roket.y + roket.height > canvas.height)
-            roket.y = canvas.height - roket.height;
-
-    });
-
-    canvas.addEventListener("touchstart", function (e) {
-
-        const now = Date.now();
-
-        if (now - lastTap < 300) {
-            if (!roket.isDestroyed && !gameOver) {
-                spawnBullet();
-            }
-        }
-
-        lastTap = now;
-
-    });
-
-}
