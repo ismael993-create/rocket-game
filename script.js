@@ -28,7 +28,7 @@ const ROCKET_W = 200, ROCKET_H = 90;
 const UFO_W    = 100, UFO_H    = 40;
 
 function spriteScale() { return isMobile() ? 0.7 : 1.0; }
-function rocketSpeed() { return isMobile() ? 280 : 480; }  // px pro SEKUNDE (delta-time basiert!)
+function rocketSpeed() { return isMobile() ? 200 : 480; }  // px pro SEKUNDE (delta-time basiert!)
 
 let roket = {
     x: 50,
