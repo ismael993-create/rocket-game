@@ -1,6 +1,6 @@
 let KEY_Space = false;
-let KEY_Up = false;
-let KEY_Down = false;
+let KEY_Up    = false;
+let KEY_Down  = false;
 
 const canvas = document.getElementById("canvas");
 let ctx;
@@ -12,41 +12,42 @@ function isMobile() {
         window.innerWidth < 900;
 }
 
-// Basisgrößen (Desktop)
 const ROCKET_W = 200, ROCKET_H = 90;
 const UFO_W    = 100, UFO_H    = 40;
 
-function spriteScale() {
-    return isMobile() ? 0.55 : 1.0;
-}
+// Mobil: 75% der Desktop-Größe (war 55%, jetzt größer)
+function spriteScale() { return isMobile() ? 0.75 : 1.0; }
+
+// Raketen-Geschwindigkeit pro Frame (px): Desktop 6, Mobil 3 (langsamer)
+function rocketSpeed() { return isMobile() ? 3 : 6; }
 
 let roket = {
     x: 50,
     y: 350,
-    width: ROCKET_W,
+    width:  ROCKET_W,
     height: ROCKET_H,
-    src: "./img/rocket.png",
+    src:   "./img/rocket.png",
     image: null
 };
 
-let ufos = [];
-let explosions = [];
-let score = 0;
-let bestScore = parseInt(localStorage.getItem('bestScore')) || 0;
-let gameOver = null;
+let ufos        = [];
+let explosions  = [];
+let score       = 0;
+let bestScore   = parseInt(localStorage.getItem('bestScore')) || 0;
+let gameOver    = null;
 let createUfosIntervalId = null;
-let collisionIntervalId = null;
-let bullets = [];
+let collisionIntervalId  = null;
+let bullets     = [];
 let lastShotTime = 0;
-const SHOT_COOLDOWN = 300;
-const LASER_LENGTH = 15;
-const LASER_HEIGHT = 6;
+const SHOT_COOLDOWN  = 300;
+const LASER_LENGTH   = 15;
+const LASER_HEIGHT   = 6;
 
 // ── Audio ─────────────────────────────────────────────────────────────────────
-let audioCtx = null;
+let audioCtx   = null;
 let masterGain = null;
-let bgGain = null;
-let bgNodes = null;
+let bgGain     = null;
+let bgNodes    = null;
 let audioMuted = false;
 let showBgOverlay = false;
 const persistedBg = parseFloat(localStorage.getItem('bgGain'));
@@ -61,7 +62,7 @@ function setBgVolume(v) {
 
 function initAudio() {
     if (audioCtx) return;
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audioCtx.createGain();
     masterGain.gain.value = 1.0;
     masterGain.connect(audioCtx.destination);
@@ -77,35 +78,21 @@ function startBgMusic() {
 
     const osc1 = audioCtx.createOscillator();
     const osc2 = audioCtx.createOscillator();
-    osc1.type = 'triangle';
-    osc2.type = 'sine';
-    osc1.frequency.value = 55;
-    osc2.frequency.value = 82.41;
-    osc2.detune.value = 12;
+    osc1.type = 'triangle'; osc2.type = 'sine';
+    osc1.frequency.value = 55; osc2.frequency.value = 82.41; osc2.detune.value = 12;
 
-    const mix = audioCtx.createGain();
-    mix.gain.value = 0.12;
+    const mix = audioCtx.createGain(); mix.gain.value = 0.12;
     const filter = audioCtx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 420;
+    filter.type = 'lowpass'; filter.frequency.value = 420;
+    osc1.connect(mix); osc2.connect(mix); mix.connect(filter); filter.connect(bgGain);
 
-    osc1.connect(mix); osc2.connect(mix);
-    mix.connect(filter); filter.connect(bgGain);
-
-    const lfo = audioCtx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = 0.03;
-    const lfoGain = audioCtx.createGain();
-    lfoGain.gain.value = 100;
+    const lfo = audioCtx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.03;
+    const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 100;
     lfo.connect(lfoGain); lfoGain.connect(filter.frequency);
-
     osc1.start(); osc2.start(); lfo.start();
     bgNodes = { osc1, osc2, mix, filter, lfo, lfoGain };
 
-    const arpGain = audioCtx.createGain();
-    arpGain.gain.value = 0.5;
-    arpGain.connect(filter);
-
+    const arpGain = audioCtx.createGain(); arpGain.gain.value = 0.5; arpGain.connect(filter);
     const arpPatterns = [
         [261.63, 329.63, 392.00, 523.25],
         [392.00, 329.63, 261.63, 196.00],
@@ -114,14 +101,13 @@ function startBgMusic() {
     let arpIndex = 0;
     const arpTimer = setInterval(() => {
         if (!bgNodes) { clearInterval(arpTimer); return; }
-        const pattern = arpPatterns[Math.floor(Math.random() * arpPatterns.length)];
+        const pattern  = arpPatterns[Math.floor(Math.random() * arpPatterns.length)];
         const baseNote = pattern[arpIndex % pattern.length];
         const osc = audioCtx.createOscillator();
         osc.type = Math.random() > 0.8 ? 'sawtooth' : (Math.random() > 0.5 ? 'triangle' : 'sine');
         const freq = baseNote * (Math.random() > 0.9 ? 2 : 1);
         osc.frequency.value = freq;
-        const g = audioCtx.createGain();
-        g.gain.value = 0.0001;
+        const g = audioCtx.createGain(); g.gain.value = 0.0001;
         osc.connect(g); g.connect(arpGain);
         const t0 = audioCtx.currentTime;
         const peak = 0.25 * (0.6 + Math.random() * 0.6);
@@ -130,11 +116,9 @@ function startBgMusic() {
         g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12 + Math.random() * 0.12);
         osc.start(t0); osc.stop(t0 + 0.15 + Math.random() * 0.15);
         if (Math.random() < 0.12) {
-            const osc2b = audioCtx.createOscillator();
-            osc2b.type = 'sine';
+            const osc2b = audioCtx.createOscillator(); osc2b.type = 'sine';
             osc2b.frequency.value = freq * 1.5;
-            const g2 = audioCtx.createGain();
-            g2.gain.value = 0.0001;
+            const g2 = audioCtx.createGain(); g2.gain.value = 0.0001;
             osc2b.connect(g2); g2.connect(arpGain);
             const t1 = audioCtx.currentTime;
             g2.gain.setValueAtTime(0.0001, t1);
@@ -160,8 +144,7 @@ function playExplosionSound() {
     if (audioMuted) return;
     initAudio();
     const now = audioCtx.currentTime;
-    const thump = audioCtx.createOscillator();
-    thump.type = 'sine';
+    const thump = audioCtx.createOscillator(); thump.type = 'sine';
     thump.frequency.value = 80 + Math.random() * 40;
     const thumpG = audioCtx.createGain();
     thumpG.gain.setValueAtTime(0.0001, now);
@@ -172,15 +155,12 @@ function playExplosionSound() {
 
     const bufferSize = Math.floor(audioCtx.sampleRate * 0.12);
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
+    const data   = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++)
         data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.8);
-    }
-    const noise = audioCtx.createBufferSource();
-    noise.buffer = buffer;
-    const noiseG = audioCtx.createGain();
-    noiseG.gain.setValueAtTime(0.0001, now);
-    const filt = audioCtx.createBiquadFilter();
+    const noise  = audioCtx.createBufferSource(); noise.buffer = buffer;
+    const noiseG = audioCtx.createGain(); noiseG.gain.setValueAtTime(0.0001, now);
+    const filt   = audioCtx.createBiquadFilter();
     filt.type = 'bandpass'; filt.frequency.value = 900; filt.Q.value = 1.8;
     noise.connect(noiseG); noiseG.connect(filt); filt.connect(masterGain);
     noiseG.gain.linearRampToValueAtTime(0.9, now + 0.005);
@@ -192,13 +172,11 @@ function playSadSound() {
     if (audioMuted) return;
     initAudio();
     const now = audioCtx.currentTime;
-    const base = 220;
     [0, -3, -7].forEach((it, idx) => {
         const osc = audioCtx.createOscillator();
         osc.type = idx === 1 ? 'triangle' : 'sine';
-        osc.frequency.value = base * Math.pow(2, it / 12);
-        const g = audioCtx.createGain();
-        g.gain.value = 0.0;
+        osc.frequency.value = 220 * Math.pow(2, it / 12);
+        const g = audioCtx.createGain(); g.gain.value = 0.0;
         osc.connect(g); g.connect(masterGain);
         const start = now + idx * 0.08;
         g.gain.setValueAtTime(0.0001, start);
@@ -212,10 +190,9 @@ function playLaserSound() {
     if (audioMuted) return;
     initAudio();
     const now = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    osc.type = 'sawtooth';
-    const g = audioCtx.createGain();
-    const bp = audioCtx.createBiquadFilter();
+    const osc = audioCtx.createOscillator(); osc.type = 'sawtooth';
+    const g   = audioCtx.createGain();
+    const bp  = audioCtx.createBiquadFilter();
     bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 8;
     osc.connect(bp); bp.connect(g); g.connect(masterGain);
     g.gain.setValueAtTime(0.0001, now);
@@ -228,18 +205,17 @@ function playLaserSound() {
 
 function setMuted(m) {
     audioMuted = !!m;
-    if (audioMuted) stopBgMusic();
-    else startBgMusic();
+    if (audioMuted) stopBgMusic(); else startBgMusic();
 }
 
-// ── Speed constants ───────────────────────────────────────────────────────────
+// ── Speed ─────────────────────────────────────────────────────────────────────
 let startTime = 0;
-const SPEED_INCREASE_START = 60000;
+const SPEED_INCREASE_START       = 60000;
 const SPEED_GROWTH_TIME_TO_MAX_MS = 2 * 60 * 1000;
 let lastFrameTime = 0;
 const UFO_BASE_SPEED_PPS = 300;
 let ufoSpeedPPS = UFO_BASE_SPEED_PPS;
-const UFO_MAX_SPEED_PPS = 770;
+const UFO_MAX_SPEED_PPS  = 770;
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
 window.addEventListener('keydown', (e) => {
@@ -264,93 +240,73 @@ window.addEventListener('keyup', (e) => {
 });
 
 // ── Touch-Steuerung ───────────────────────────────────────────────────────────
-// Steuerung NUR über den Canvas (keine Buttons):
-//   obere Bildschirmhälfte gedrückt halten  → hoch
-//   untere Bildschirmhälfte gedrückt halten → runter
-//   Doppeltippen (< 300ms zwischen zwei Taps) → schießen
+// Steuerung über Buttons (▲ ▼) + Doppeltippen auf Canvas = schießen
+// ODER: obere Bildschirmhälfte = hoch, untere = runter (Fallback ohne Buttons)
 function initTouchControls() {
     if (!isMobile()) return;
 
-    let lastTapTime = 0; // für Doppeltippen-Erkennung
+    // Buttons einblenden
+    const touchControls = document.getElementById('touchControls');
+    const touchShoot    = document.getElementById('touchShoot');
+    if (touchControls) touchControls.style.display = 'flex';
+    if (touchShoot)    touchShoot.style.display    = 'flex';
 
-    // Welche Finger sind aktiv + wo
-    const activeTouches = {};
-
-    function updateDirectionFromTouches() {
-        const ids = Object.keys(activeTouches);
-        if (ids.length === 0) { KEY_Up = false; KEY_Down = false; return; }
-        // Benutze den ersten aktiven Touch für die Richtung
-        const touch = activeTouches[ids[0]];
-        const canvasRect = canvas.getBoundingClientRect();
-        const relY = touch.clientY - canvasRect.top;
-        const mid  = canvasRect.height / 2;
-        KEY_Up   = relY < mid;
-        KEY_Down = relY >= mid;
+    // ▲ Button
+    const btnUp = document.getElementById('touchUp');
+    if (btnUp) {
+        btnUp.addEventListener('touchstart',  (e) => { e.preventDefault(); KEY_Up = true;  }, { passive: false });
+        btnUp.addEventListener('touchend',    (e) => { e.preventDefault(); KEY_Up = false; }, { passive: false });
+        btnUp.addEventListener('touchcancel', (e) => { e.preventDefault(); KEY_Up = false; }, { passive: false });
     }
 
+    // ▼ Button
+    const btnDown = document.getElementById('touchDown');
+    if (btnDown) {
+        btnDown.addEventListener('touchstart',  (e) => { e.preventDefault(); KEY_Down = true;  }, { passive: false });
+        btnDown.addEventListener('touchend',    (e) => { e.preventDefault(); KEY_Down = false; }, { passive: false });
+        btnDown.addEventListener('touchcancel', (e) => { e.preventDefault(); KEY_Down = false; }, { passive: false });
+    }
+
+    // 🔵 Schießen-Button
+    if (touchShoot) {
+        touchShoot.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            const now = performance.now();
+            if (!roket.isDestroyed && !gameOver && (now - lastShotTime) > SHOT_COOLDOWN) {
+                spawnBullet(); lastShotTime = now;
+            }
+        }, { passive: false });
+    }
+
+    // Doppeltippen auf Canvas → schießen
+    let lastTapTime = 0;
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
         initAudio();
         if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-
-        for (const t of e.changedTouches) {
-            activeTouches[t.identifier] = { clientY: t.clientY };
-        }
-
-        // Doppeltippen-Erkennung: zwei Taps innerhalb 300ms
         const now = performance.now();
         if (now - lastTapTime < 300) {
-            // Doppeltippen → schießen
             if (!roket.isDestroyed && !gameOver && (now - lastShotTime) > SHOT_COOLDOWN) {
-                spawnBullet();
-                lastShotTime = now;
+                spawnBullet(); lastShotTime = now;
             }
-            lastTapTime = 0; // zurücksetzen damit kein Triple-Tap zählt
+            lastTapTime = 0;
         } else {
             lastTapTime = now;
         }
-
-        updateDirectionFromTouches();
     }, { passive: false });
 
-    canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        for (const t of e.changedTouches) {
-            if (activeTouches[t.identifier] !== undefined) {
-                activeTouches[t.identifier] = { clientY: t.clientY };
-            }
-        }
-        updateDirectionFromTouches();
-    }, { passive: false });
-
-    canvas.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        for (const t of e.changedTouches) {
-            delete activeTouches[t.identifier];
-        }
-        updateDirectionFromTouches();
-    }, { passive: false });
-
-    canvas.addEventListener('touchcancel', (e) => {
-        for (const t of e.changedTouches) {
-            delete activeTouches[t.identifier];
-        }
-        KEY_Up = false; KEY_Down = false;
-    }, { passive: false });
+    canvas.addEventListener('touchcancel', () => { KEY_Up = false; KEY_Down = false; }, { passive: false });
 }
 
-// ── Querformat erzwingen ──────────────────────────────────────────────────────
+// ── Querformat ────────────────────────────────────────────────────────────────
 function checkOrientation() {
     if (!isMobile()) return;
-
-    // Methode 1: Screen Orientation API (funktioniert in den meisten Android-Browsern)
+    // Methode 1: Screen Orientation API sperren (Android Chrome/Firefox)
     if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('landscape').catch(() => {
-            // Fallback: Overlay zeigen wenn Hochformat
-            showPortraitOverlay();
-        });
+        screen.orientation.lock('landscape').catch(() => showPortraitOverlay());
     } else {
-        // Fallback für Safari / ältere Browser
         showPortraitOverlay();
     }
 }
@@ -358,8 +314,7 @@ function checkOrientation() {
 function showPortraitOverlay() {
     const overlay = document.getElementById('orientationOverlay');
     if (!overlay) return;
-    const isPortrait = window.innerHeight > window.innerWidth;
-    overlay.style.display = isPortrait ? 'flex' : 'none';
+    overlay.style.display = (window.innerHeight > window.innerWidth) ? 'flex' : 'none';
 }
 
 window.addEventListener('orientationchange', () => setTimeout(showPortraitOverlay, 200));
@@ -367,15 +322,15 @@ window.addEventListener('resize', showPortraitOverlay);
 
 // ── UFO erstellen ─────────────────────────────────────────────────────────────
 function createufos() {
-    const s = spriteScale();
+    const s    = spriteScale();
     const ufoW = Math.round(UFO_W * s);
     const ufoH = Math.round(UFO_H * s);
     let ufo = {
-        y: Math.random() * (canvas.height - ufoH - 20) + 10,
-        width: ufoW,
+        y:      Math.random() * (canvas.height - ufoH - 20) + 10,
+        width:  ufoW,
         height: ufoH,
-        src: "./img/ufo.png",
-        image: new Image()
+        src:    "./img/ufo.png",
+        image:  new Image()
     };
     ufo.x = canvas.width - ufoW;
     ufo.image.onerror = () => console.error('Failed to load ufo');
@@ -414,7 +369,6 @@ async function startGame() {
     if (!canvas) { console.error('Canvas not found'); return; }
     ctx = canvas.getContext('2d');
 
-    // Sprite-Größe je nach Gerät setzen
     const s = spriteScale();
     roket.width  = Math.round(ROCKET_W * s);
     roket.height = Math.round(ROCKET_H * s);
@@ -432,39 +386,43 @@ async function startGame() {
     requestAnimationFrame(draw);
 }
 
-// ── Kollisionsprüfung ─────────────────────────────────────────────────────────
+// ── Kollisionsprüfung (nur Rakete ↔ UFO) ─────────────────────────────────────
 function checkforcollisions() {
+    if (roket.isDestroyed || gameOver) return; // bereits Game Over, nichts mehr prüfen
     ufos.forEach(function(ufo) {
+        if (ufo._hit) return; // bereits abgeschossen, überspringen
         if (roket.x < ufo.x + ufo.width  &&
             roket.x + roket.width  > ufo.x &&
             roket.y < ufo.y + ufo.height &&
             roket.y + roket.height > ufo.y) {
-            if (!roket.isDestroyed) {
-                ufo._hit = true;
-                roket.image = roket.boomImage || roket.image;
-                roket.isDestroyed = true;
-                if (createUfosIntervalId) { clearInterval(createUfosIntervalId); createUfosIntervalId = null; }
-                if (collisionIntervalId)  { clearInterval(collisionIntervalId);  collisionIntervalId  = null; }
-                gameOver = { endTime: performance.now() + 5000 };
-                playSadSound();
-                setTimeout(softRestart, 5000);
-            }
+            ufo._hit = true;
+            triggerGameOver();
         }
     });
+}
+
+// ── Game Over auslösen (nur einmal) ──────────────────────────────────────────
+function triggerGameOver() {
+    if (roket.isDestroyed || gameOver) return; // guard: nur einmal
+    roket.image = roket.boomImage || roket.image;
+    roket.isDestroyed = true;
+    if (createUfosIntervalId) { clearInterval(createUfosIntervalId); createUfosIntervalId = null; }
+    if (collisionIntervalId)  { clearInterval(collisionIntervalId);  collisionIntervalId  = null; }
+    gameOver = { endTime: performance.now() + 5000 };
+    playSadSound();
+    setTimeout(softRestart, 5000);
 }
 
 // ── Bilder laden ──────────────────────────────────────────────────────────────
 function loadImages() {
     backgroundimage.src = './img/background.jpg';
-    roket.image = new Image();
-    roket.image.src = roket.src;
-    roket.origImage = roket.image;
-    roket.boomImage = new Image();
-    roket.boomImage.src = './img/boom.png';
+    roket.image = new Image(); roket.image.src = roket.src;
+    roket.origImage  = roket.image;
+    roket.boomImage  = new Image(); roket.boomImage.src = './img/boom.png';
     return Promise.all([
-        waitForImage(backgroundimage, 'background'),
-        waitForImage(roket.image,     'rocket'),
-        waitForImage(roket.boomImage, 'boom')
+        waitForImage(backgroundimage,  'background'),
+        waitForImage(roket.image,      'rocket'),
+        waitForImage(roket.boomImage,  'boom')
     ]);
 }
 
@@ -487,9 +445,10 @@ function draw() {
     }
 
     // Rakete bewegen
+    const spd = rocketSpeed();
     if (!roket.isDestroyed) {
-        if (KEY_Up)   roket.y -= 6;
-        if (KEY_Down) roket.y += 6;
+        if (KEY_Up)   roket.y -= spd;
+        if (KEY_Down) roket.y += spd;
         if (roket.y < 0) roket.y = 0;
         if (roket.y + roket.height > canvas.height) roket.y = canvas.height - roket.height;
     }
@@ -501,7 +460,7 @@ function draw() {
     const dt  = Math.min(0.1, (now - lastFrameTime) / 1000);
     lastFrameTime = now;
 
-    // UFO-Geschwindigkeit berechnen
+    // UFO-Geschwindigkeit
     const maxSpeedPPS = Math.max(200, (canvas.width - roket.x) / 1.0);
     const elapsed     = now - startTime;
     if (elapsed <= SPEED_INCREASE_START) {
@@ -515,38 +474,36 @@ function draw() {
     bullets.forEach(b => { b.x += b.vx * dt; });
     bullets = bullets.filter(b => b.x - b.length < canvas.width);
 
-    // Treffer-Prüfung Kugel ↔ UFO
+    // Treffer Kugel ↔ UFO
     bullets.forEach(b => {
         ufos.forEach(u => {
-            if (!u._hit) {
-                if (b.x + b.length > u.x && b.x < u.x + u.width &&
-                    b.y + b.height / 2 > u.y && b.y - b.height / 2 < u.y + u.height) {
-                    u._hit = true;
-                    createExplosion(u.x + u.width / 2, u.y + u.height / 2, { count: 20, duration: 600 });
-                    playExplosionSound();
-                    b.x = canvas.width + 1000;
-                    score += 10;
-                    if (score > bestScore) { bestScore = score; localStorage.setItem('bestScore', bestScore); }
-                }
+            if (!u._hit &&
+                b.x + b.length > u.x && b.x < u.x + u.width &&
+                b.y + b.height / 2 > u.y && b.y - b.height / 2 < u.y + u.height) {
+                u._hit = true;
+                createExplosion(u.x + u.width / 2, u.y + u.height / 2, { count: 20, duration: 600 });
+                playExplosionSound();
+                b.x = canvas.width + 1000;
+                score += 10;
+                if (score > bestScore) { bestScore = score; localStorage.setItem('bestScore', bestScore); }
             }
         });
     });
 
-    // UFO am linken Rand → Game Over
-    for (let i = 0; i < ufos.length; i++) {
-        const u = ufos[i];
-        if (!u._hit && (u.x + u.width) < 0 && !roket.isDestroyed) {
-            roket.image = roket.boomImage || roket.image;
-            roket.isDestroyed = true;
-            if (createUfosIntervalId) { clearInterval(createUfosIntervalId); createUfosIntervalId = null; }
-            if (collisionIntervalId)  { clearInterval(collisionIntervalId);  collisionIntervalId  = null; }
-            gameOver = { endTime: performance.now() + 5000 };
-            playSadSound();
-            setTimeout(softRestart, 5000);
-            break;
+    // UFO vollständig links raus → Game Over (NUR wenn noch aktiv)
+    if (!gameOver && !roket.isDestroyed) {
+        for (let i = 0; i < ufos.length; i++) {
+            const u = ufos[i];
+            // UFO gilt als "vorbei" wenn die rechte Kante den linken Rand passiert hat
+            if (!u._hit && (u.x + u.width) < 0) {
+                triggerGameOver();
+                break;
+            }
         }
     }
 
+    // Entferne abgeschossene und komplett vorbeigeflogenene UFOs aus dem Array
+    // WICHTIG: "vorbei" UFOs erst NACH der Game-Over-Prüfung oben entfernen
     ufos = ufos.filter(u => !u._hit && (u.x + u.width) > 0);
 
     // UFOs zeichnen
@@ -570,7 +527,7 @@ function draw() {
         ex.particles.forEach(p => {
             ctx.save();
             ctx.globalAlpha = 1 - progress;
-            ctx.fillStyle = p.color;
+            ctx.fillStyle   = p.color;
             ctx.beginPath();
             ctx.arc(ex.x + p.vx * t, ex.y + p.vy * t, p.r * (1 - progress * 0.5), 0, Math.PI * 2);
             ctx.fill();
@@ -582,7 +539,7 @@ function draw() {
     // Score
     ctx.save();
     ctx.fillStyle = 'white';
-    ctx.font = '24px sans-serif';
+    ctx.font      = '24px sans-serif';
     ctx.fillText('Score: ' + score + '   Best: ' + bestScore, 20, 30);
     ctx.restore();
 
@@ -590,40 +547,40 @@ function draw() {
     if (gameOver) {
         const remaining = Math.max(0, Math.ceil((gameOver.endTime - now) / 1000));
         ctx.save();
-        ctx.globalAlpha = 0.15;
-        ctx.fillStyle = 'black';
-        ctx.font = '140px sans-serif';
-        ctx.textAlign = 'center';
+        ctx.globalAlpha  = 0.15;
+        ctx.fillStyle    = 'black';
+        ctx.font         = '140px sans-serif';
+        ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(remaining.toString(), canvas.width / 2, canvas.height / 2);
         ctx.restore();
 
         ctx.save();
-        ctx.fillStyle = 'white';
-        ctx.font = '72px sans-serif';
-        ctx.textAlign = 'center';
+        ctx.fillStyle    = 'white';
+        ctx.font         = '72px sans-serif';
+        ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 10);
         ctx.restore();
     }
 
-    // Debug-Info UFO-Speed
+    // Debug UFO-Speed
     ctx.save();
-    ctx.fillStyle = 'lightgray';
-    ctx.font = '16px monospace';
-    ctx.textAlign = 'right';
+    ctx.fillStyle  = 'lightgray';
+    ctx.font       = '16px monospace';
+    ctx.textAlign  = 'right';
     ctx.fillText('UFO speed: ' + Math.round(ufoSpeedPPS) + ' px/s', canvas.width - 10, canvas.height - 10);
     ctx.restore();
 
-    // Lautstärke-Overlay (V-Taste)
+    // Lautstärke-Overlay
     if (showBgOverlay) {
         ctx.save();
         ctx.globalAlpha = 0.85;
-        ctx.fillStyle = '#000';
+        ctx.fillStyle   = '#000';
         ctx.fillRect(10, 10, 220, 60);
-        ctx.fillStyle = 'white';
-        ctx.font = '16px sans-serif';
-        ctx.textAlign = 'left';
+        ctx.fillStyle   = 'white';
+        ctx.font        = '16px sans-serif';
+        ctx.textAlign   = 'left';
         ctx.fillText('BG Volume: ' + (bgGain ? bgGain.gain.value.toFixed(2) : 'n/a'), 20, 34);
         ctx.fillText('] increase  [ decrease  V toggle', 20, 52);
         ctx.restore();
@@ -635,21 +592,19 @@ function draw() {
 // ── Neustart ──────────────────────────────────────────────────────────────────
 function softRestart() {
     const preservedBest = bestScore;
-
     if (createUfosIntervalId) { clearInterval(createUfosIntervalId); createUfosIntervalId = null; }
     if (collisionIntervalId)  { clearInterval(collisionIntervalId);  collisionIntervalId  = null; }
 
     ufos = []; bullets = []; explosions = [];
     score = 0; bestScore = preservedBest; gameOver = null;
 
-    // Sprite-Größe bei Neustart erneut berechnen (Gerät könnte gewechselt haben)
     const s = spriteScale();
     roket.width  = Math.round(ROCKET_W * s);
     roket.height = Math.round(ROCKET_H * s);
     roket.image  = roket.origImage || roket.image;
     roket.isDestroyed = false;
     roket.x = 50;
-    roket.y = 350;
+    roket.y = canvas.height / 2 - roket.height / 2;
 
     startTime     = performance.now();
     lastFrameTime = startTime;
