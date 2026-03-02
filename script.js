@@ -6,7 +6,7 @@ const canvas = document.getElementById("canvas");
 let ctx;
 
 const backgroundimage = new Image();
-canvas.width = 1900;
+
 canvas.height = 900;
 
 let roket = {
@@ -291,12 +291,12 @@ window.addEventListener('keyup', (e) => {
 
 function createufos() {
 
-    let x = canvas.width + 50;   // <-- WICHTIG
-    let y = Math.random() * (canvas.height - 100);
+    const spawnX = canvas.width + 80; // IMMER komplett rechts außerhalb
+    const spawnY = Math.random() * (canvas.height - 60);
 
-    let ufo = {
-        x: x,
-        y: y,
+    const ufo = {
+        x: spawnX,
+        y: spawnY,
         width: 80,
         height: 60,
         speed: 4
@@ -362,41 +362,31 @@ function createExplosion(cx, cy, opts) {
 
 
 
-
 async function startGame() {
-
-    if (!canvas) {
-        console.error('Canvas element not found');
-        return;
-    }
 
     ctx = canvas.getContext('2d');
 
     if (isMobile()) {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-
-        roket.width = 100;
-        roket.height = 45;
     } else {
         canvas.width = 1900;
         canvas.height = 900;
     }
 
-    setupMobileControls();
-
     await loadImages();
-
     startBgMusic();
 
     createUfosIntervalId = setInterval(createufos, 3000);
     collisionIntervalId = setInterval(checkforcollisions, 1000 / 25);
 
-    startTime = performance.now();
-    lastFrameTime = startTime;
-
     requestAnimationFrame(draw);
 }
+// ERST JETZT starten:
+createUfosIntervalId = setInterval(createufos, 3000);
+collisionIntervalId = setInterval(checkforcollisions, 1000 / 25);
+
+requestAnimationFrame(draw);
 
 function checkforcollisions(params) {
     ufos.forEach(function(ufo){
