@@ -213,7 +213,7 @@ const SPEED_GROWTH_TIME_TO_MAX_MS = 2 * 60 * 1000;
 let lastFrameTime = 0;
 const UFO_BASE_SPEED_PPS = 300;
 let ufoSpeedPPS = UFO_BASE_SPEED_PPS;
-const UFO_MAX_SPEED_PPS  = 770;
+const UFO_MAX_SPEED_PPS  = 1070;
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
 window.addEventListener('keydown', (e) => {
@@ -473,7 +473,7 @@ function draw() {
     if (elapsed <= SPEED_INCREASE_START) {
         ufoSpeedPPS = UFO_BASE_SPEED_PPS;
     } else {
-        // Geschwindigkeit linear von Basis (300) bis Max (770) über 2 Minuten
+        // Geschwindigkeit linear von Basis (300) bis Max (1070) über 2 Minuten
         // Unabhängig von Bildschirmgröße damit Handy und Desktop gleich schnell werden
         const t = Math.min(1, (elapsed - SPEED_INCREASE_START) / SPEED_GROWTH_TIME_TO_MAX_MS);
         ufoSpeedPPS = UFO_BASE_SPEED_PPS + (UFO_MAX_SPEED_PPS - UFO_BASE_SPEED_PPS) * t;
